@@ -131,9 +131,9 @@ void setup() {
 }
 
 void loop() {
- if (digitalRead(Encoder_OuputA) != Previous_Output)
+ if (digitalRead(Encoder_OuputB) != Previous_Output)
    { 
-     if (digitalRead(Encoder_OuputB) != Previous_Output) 
+     if (digitalRead(Encoder_OuputA) != Previous_Output) 
      { 
         if(diadelasemana==6)
           {
@@ -168,7 +168,7 @@ void loop() {
           }
      }
    }
-    Previous_Output = digitalRead(Encoder_OuputA);
+    Previous_Output = digitalRead(Encoder_OuputB);
     Seleccion_dias();
 
 delay(10);

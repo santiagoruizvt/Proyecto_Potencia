@@ -1,6 +1,8 @@
 #include <LiquidCrystal.h> 
+#include <EEPROM.h>
 #include <TimerOne.h> //Para simular el reloj del RTC
 
+//Menu
 #define MENU_PRINCIPAL          0
 #define MENU_AJUSTE_FECHA_HORA  1
 #define MENU_CONFIGURACION      2
@@ -16,11 +18,24 @@
 #define VIERNES   5
 #define SABADO    6
 
+//Rangos
+#define INICIO_1	0
+#define FIN_1		  1
+#define INICIO_2	2
+#define FIN_2		  3
+#define INICIO_3	4
+#define FIN_3		  5
+#define INICIO_4	6
+#define FIN_4		  7
 
 //Encoder
 #define DERECHA   1
 #define IZQUIERDA 2
 #define ENTER     3
+
+//Para lectura de EEPROM
+#define HORA    0
+#define MINUTOS 1
 
 int Encoder_OuputA  = 9;
 int Encoder_OuputB  = 8;
@@ -32,24 +47,27 @@ int estado_menu=0;
 int estado_menu_anterior=0;
 int estado_ajuste=0;
 int estado_prog_sem=0;
+int estado_prog_rango=0;
 int proximo_menu=0;
 int seg_anterior=0;
-
+int rango_a_programar=0;
+char Rango_num[8];
 //*******ESTRUCTURA DE FECHA Y HORA*****************************************
 struct RTC_Time
 {
   //FECHA
-  int dia; //[1,31]
-  int mes; //[1,12]
-  int anio; //[0,255]
+  char dia; //[1,31]
+  char mes; //[1,12]
+  char anio; //[0,255]
   //HORA
-  int seg; //[0,59]
-  int min; //[0,59]
-  int hora; //[0,23]
+  char seg; //[0,59]
+  char min; //[0,59]
+  char hora; //[0,23]
 };
 
 RTC_Time ActualTime;
 RTC_Time AjusteTime;
+RTC_Time AuxTime;
 
 /***Letras seleccionadas***/
 byte L[8] = {
@@ -189,9 +207,436 @@ void setup() {
   Timer1.initialize(1000000);
   Timer1.attachInterrupt(ISR_Segundo);
 
+  Rango_num[INICIO_1]=Rango_num[FIN_1]='1';
+  Rango_num[INICIO_2]=Rango_num[FIN_2]='2';
+  Rango_num[INICIO_3]=Rango_num[FIN_3]='3';
+  Rango_num[INICIO_4]=Rango_num[FIN_4]='4';
   
 }
 
+int Leer_Encoder(){
+  
+  int giro_encoder=0;
+
+  if (digitalRead(Encoder_OuputB) != Previous_Output)
+  { 
+    if (digitalRead(Encoder_OuputA) != Previous_Output) 
+    { 
+      giro_encoder = DERECHA;
+    } 
+    else
+    {
+      giro_encoder = IZQUIERDA;
+    }
+  }
+  
+  Previous_Output = digitalRead(Encoder_OuputB);
+
+  //El ENTER tiene prioridad ante los giros
+  if(digitalRead(Encoder_Switch)==0)
+  {
+    while(digitalRead(Encoder_Switch)==0)
+    {
+      //Espero a que suelte el pulsador
+    };
+    return(ENTER);  
+  }
+
+  return(giro_encoder);
+}
+
+void Programacion_Semanal() {
+
+  char BufferAux[5];
+
+  switch(estado_prog_sem)
+  {
+    case 0:
+      lcd.setCursor(0, 0);
+      lcd.print("Seleccionar dia");
+      lcd.setCursor(0, 1);
+      lcd.print("D L Ma Mi J V S");
+
+      //Selecciono DOMINGO
+      lcd.setCursor(0, 1);
+      lcd.write(byte(0));//D seleccionada
+      diadelasemana=0;
+
+      delay(1000);
+
+      estado_prog_sem++;
+    break;
+
+    case 1:
+      switch(Leer_Encoder())
+      {
+        default:
+          break;
+
+        case DERECHA:
+          if(diadelasemana==6)
+          {
+            diadelasemana=0;
+            Serial.print("Variable: ");
+            Serial.print(diadelasemana);
+            Serial.print("\n");
+          }
+          else
+          {
+            diadelasemana ++;
+            Serial.print("Variable: ");
+            Serial.print(diadelasemana);
+            Serial.print("\n");
+          }
+          delay(250);
+        break;
+          
+        case IZQUIERDA:
+
+          if(diadelasemana>=0)
+          {
+            diadelasemana--;
+            Serial.print("Variable: ");
+            Serial.print(diadelasemana);
+            Serial.print("\n");
+          }
+          if(diadelasemana<0)
+          {
+            diadelasemana=6;
+            Serial.print("Variable: ");
+            Serial.print(diadelasemana);
+            Serial.print("\n");
+          }
+          delay(250);
+        break;
+
+        case ENTER:
+          estado_prog_sem++;
+        break;
+      }
+      
+      Seleccion_dias();
+
+      delay(10);
+    break;
+
+    case 2:
+    //Presento el día en pantalla
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    switch(diadelasemana)
+    {
+      case DOMINGO:
+        lcd.print("DOMINGO");
+        break;
+      
+      case LUNES:
+        lcd.print("LUNES");
+        break;
+      
+      case MARTES:
+        lcd.print("MARTES");
+        break;
+      
+      case MIERCOLES:
+        lcd.print("MIERCOLES");
+        break;
+      
+      case JUEVES:
+        lcd.print("JUEVES");
+        break;
+      
+      case VIERNES:
+        lcd.print("VIERNES");
+        break;
+      
+      case SABADO:
+        lcd.print("SABADO");
+        break;
+    }
+
+
+    estado_prog_sem++;
+    rango_a_programar=0;
+    break;
+
+    case 3:
+      if(Programar_Rango(rango_a_programar)==1)
+        rango_a_programar++;
+
+      if(rango_a_programar > FIN_4)
+        estado_prog_sem++;
+    break;
+
+    case 4:
+      lcd.setCursor(0, 0);
+      lcd.print("Config guardada ");
+      lcd.setCursor(0, 1);
+      lcd.print("   con exito    ");
+      delay(3000);
+      estado_menu=MENU_PRINCIPAL;
+      estado_prog_sem=0;
+      diadelasemana=0;
+    break;
+  }
+}
+
+
+bool Programar_Rango(int rango)
+{
+  //Por cada rango a programar va a entrar acá
+  char BufferAux[5];
+
+  switch(estado_prog_rango)
+  {
+    case 0:
+      lcd.setCursor(10, 0);
+      lcd.print("Rango");
+      lcd.setCursor(15, 0);
+      lcd.print(Rango_num[rango]);
+
+      if(rango%2==0)
+      {
+        lcd.setCursor(0, 1);
+        lcd.print("Encendido:");//Rangos pares son encedido
+      }
+      else
+      {
+        lcd.setCursor(0, 1);
+        lcd.print("Apagado:  ");//Rangos impares son apagado
+      }
+
+      AuxTime.hora = Leer_Rangos_EEPROM(diadelasemana, rango, HORA);
+      AuxTime.min  = Leer_Rangos_EEPROM(diadelasemana, rango, MINUTOS);
+
+      lcd.setCursor(11, 1);
+      if((AuxTime.hora<0 || AuxTime.hora>23)||(AuxTime.min<0 || AuxTime.min>45))
+      {
+        //Si están fuera de rango los muestro como guiones 
+        lcd.print("--:--");
+        AuxTime.hora = 0;
+        AuxTime.min  = 0;
+      }
+      else
+      {
+        sprintf(BufferAux,"%02d:%02d",AuxTime.hora,AuxTime.min);
+        lcd.print(BufferAux);
+      }
+      estado_prog_rango++;
+    break;
+
+    case 1:
+      //Programo la hora
+      lcd.setCursor(11, 1);
+      sprintf(BufferAux,"%02d:%02d",AuxTime.hora,AuxTime.min);
+      lcd.print(BufferAux);
+      Efecto_Titilar(11,1,2,100);
+      
+      switch(Leer_Encoder())
+      {
+        case IZQUIERDA:
+          AuxTime.hora--;
+          if(AuxTime.hora<0)
+            AuxTime.hora=23;
+        break;
+
+        case DERECHA:
+          AuxTime.hora++;
+          if(AuxTime.hora>23)
+            AuxTime.hora=0;
+        break;
+
+        case ENTER:
+          estado_prog_rango++;
+        break;
+
+      }
+    break;
+
+    case 2:
+      //Programo los minutos
+      lcd.setCursor(11, 1);
+      sprintf(BufferAux,"%02d:%02d",AuxTime.hora,AuxTime.min);
+      lcd.print(BufferAux);
+      Efecto_Titilar(14,1,2,100);
+      
+      switch(Leer_Encoder())
+      {
+        case IZQUIERDA:
+          AuxTime.min=AuxTime.min-15;
+          if(AuxTime.min<0)
+            AuxTime.min=45;
+        break;
+
+        case DERECHA:
+          AuxTime.min=AuxTime.min+15;
+          if(AuxTime.min>45)
+            AuxTime.min=0;
+        break;
+
+        case ENTER:
+          estado_prog_rango++;
+        break;
+
+      }
+    break;
+
+    case 3:
+      //Guardo el rango en EEPROM
+
+      #warning "Habria que hacer una logica que se fije que el inicio sea antes del fin en cada rango, y que no se superpongan"
+
+      Escribir_Rangos_EEPROM(diadelasemana,rango,AuxTime.hora,AuxTime.min);
+
+
+      estado_prog_rango=0;
+      return(1);
+    break;
+
+  }
+  return(0);
+}
+
+char Leer_Rangos_EEPROM(int dia, int rango, bool hora_min)
+{
+  char codigo_hora=0;
+  int direccion_eeprom=0;
+
+  //Leo la hora y fecha programada
+  direccion_eeprom= dia*8+rango;
+  codigo_hora = EEPROM.read(direccion_eeprom);
+
+  if(hora_min == HORA)
+    return(codigo_hora/4);
+  else //if(hora_min == MINUTOS)
+  {
+    codigo_hora=codigo_hora%4; //Agarro el resto (de 0 a 3)
+    codigo_hora=codigo_hora*15;//Lo multiplico por 15
+    return(codigo_hora);
+  }
+    
+}
+
+void Escribir_Rangos_EEPROM(int dia, int rango, int hora, int min)
+{
+  char codigo_hora=0;
+  int direccion_eeprom=0;
+
+  direccion_eeprom= dia*8+rango;
+
+  codigo_hora=((hora*4)+(min/15));
+
+  EEPROM.write(direccion_eeprom,codigo_hora);
+
+}
+
+void Seleccion_dias(void)
+{
+  switch(diadelasemana)
+  {
+    case DOMINGO:
+      //Selecciono DOMINGO
+      lcd.setCursor(0, 1);
+      lcd.write(byte(0));//D seleccionada
+      //Deselecciono resto de dias
+      
+      //Deselecciono SABADO
+      lcd.setCursor(14, 1);
+      lcd.print("S");
+      //Deseleccionar_dias(diadelasemana);
+
+      //Deselecciono LUNES
+      lcd.setCursor(2, 1);
+      lcd.print("L");
+      break;
+    
+    case LUNES:
+      //Selecciono LUNES
+      lcd.setCursor(2, 1);
+      lcd.write(byte(1));//L seleccionada
+    
+      //Deselecciono DOMINGO
+      lcd.setCursor(0, 1);
+      lcd.print("D");
+
+      //Deselecciono MARTES
+      lcd.setCursor(4, 1);
+      lcd.print("Ma");
+      break;
+    
+    case MARTES:
+      //Selecciono MARTES
+      lcd.setCursor(4, 1);
+      lcd.write(byte(2));//M seleccionada
+      lcd.write(byte(3));//a seleccionada
+    
+      //Deselecciono LUNES
+      lcd.setCursor(2, 1);
+      lcd.print("L");
+
+      //Deselecciono MIERCOLES
+      lcd.setCursor(7, 1);
+      lcd.print("Mi");
+      break;
+    
+    case MIERCOLES:
+      //Selecciono MIERCOLES
+      lcd.setCursor(7, 1);
+      lcd.write(byte(2));//M seleccionada
+      lcd.write(byte(4));//i seleccionada
+    
+      //Deselecciono MARTES
+      lcd.setCursor(4, 1);
+      lcd.print("Ma");
+
+      //Deselecciono JUEVES
+      lcd.setCursor(10, 1);
+      lcd.print("J");
+      break;
+    
+    case JUEVES:
+      //Selecciono JUEVES
+      lcd.setCursor(10, 1);
+      lcd.write(byte(5));//J seleccionada
+    
+      //Deselecciono MIERCOLES
+      lcd.setCursor(7, 1);
+      lcd.print("Mi");
+
+      //Deselecciono VIERNES
+      lcd.setCursor(12, 1);
+      lcd.print("V");
+      break;
+    
+    case VIERNES:
+      //Selecciono VIERNES
+      lcd.setCursor(12, 1);
+      lcd.write(byte(6));//V seleccionada
+    
+      //Deselecciono JUEVES
+      lcd.setCursor(10, 1);
+      lcd.print("J");
+
+      //Deselecciono SABADO
+      lcd.setCursor(14, 1);
+      lcd.print("S");
+      break;
+    
+    case SABADO:
+      //Selecciono SABADO
+      lcd.setCursor(14, 1);
+      lcd.write(byte(7));//S seleccionada
+    
+      //Deselecciono VIERNES
+      lcd.setCursor(12, 1);
+      lcd.print("V");
+
+      //Deselecciono DOMINGO
+      lcd.setCursor(0, 1);
+      lcd.print("D");
+      break;
+  }
+}
 
 void Menu_Principal(){
 
@@ -542,260 +987,6 @@ int Modificar_Variable(int variable_a_modificar, int minimo, int maximo)
   return(variable_a_modificar);
 }
 
-int Leer_Encoder(){
-  
-  int giro_encoder=0;
-
-  if (digitalRead(Encoder_OuputB) != Previous_Output)
-  { 
-    if (digitalRead(Encoder_OuputA) != Previous_Output) 
-    { 
-      giro_encoder = DERECHA;
-    } 
-    else
-    {
-      giro_encoder = IZQUIERDA;
-    }
-  }
-  
-  Previous_Output = digitalRead(Encoder_OuputB);
-
-  //El ENTER tiene prioridad ante los giros
-  if(digitalRead(Encoder_Switch)==0)
-    return(ENTER);  
-
-  return(giro_encoder);
-}
-
-void Programacion_Semanal() {
-
-  switch(estado_prog_sem)
-  {
-    case 0:
-      lcd.setCursor(0, 0);
-      lcd.print("Seleccionar dia");
-      lcd.setCursor(0, 1);
-      lcd.print("D L Ma Mi J V S");
-
-      //Selecciono DOMINGO
-      lcd.setCursor(0, 1);
-      lcd.write(byte(0));//D seleccionada
-      diadelasemana=0;
-
-      delay(1000);
-
-      estado_prog_sem++;
-    break;
-
-    case 1:
-      switch(Leer_Encoder())
-      {
-        default:
-          break;
-
-        case DERECHA:
-          if(diadelasemana==6)
-          {
-            diadelasemana=0;
-            Serial.print("Variable: ");
-            Serial.print(diadelasemana);
-            Serial.print("\n");
-          }
-          else
-          {
-            diadelasemana ++;
-            Serial.print("Variable: ");
-            Serial.print(diadelasemana);
-            Serial.print("\n");
-          }
-          delay(250);
-        break;
-          
-        case IZQUIERDA:
-
-          if(diadelasemana>=0)
-          {
-            diadelasemana--;
-            Serial.print("Variable: ");
-            Serial.print(diadelasemana);
-            Serial.print("\n");
-          }
-          if(diadelasemana<0)
-          {
-            diadelasemana=6;
-            Serial.print("Variable: ");
-            Serial.print(diadelasemana);
-            Serial.print("\n");
-          }
-          delay(250);
-        break;
-
-        case ENTER:
-          estado_prog_sem++;
-        break;
-      }
-      
-      Seleccion_dias();
-
-      delay(10);
-    break;
-
-    case 2:
-    //Presento el día en pantalla
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    switch(diadelasemana)
-    {
-      case DOMINGO:
-        lcd.print("DOMINGO");
-        break;
-      
-      case LUNES:
-        lcd.print("LUNES");
-        break;
-      
-      case MARTES:
-        lcd.print("MARTES");
-        break;
-      
-      case MIERCOLES:
-        lcd.print("MIERCOLES");
-        break;
-      
-      case JUEVES:
-        lcd.print("JUEVES");
-        break;
-      
-      case VIERNES:
-        lcd.print("VIERNES");
-        break;
-      
-      case SABADO:
-        lcd.print("SABADO");
-        break;
-    }
-
-    lcd.setCursor(10, 0);
-    lcd.print("Rango1");
-
-    estado_prog_sem++;
-    break;
-
-    case 3:
-    lcd.setCursor(0, 1);
-    lcd.print("Encendido: 07:30");
-    Efecto_Titilar(11,1,2,100);
-    break;
-  }
-}
-
-void Seleccion_dias(void)
-{
-  switch(diadelasemana)
-  {
-    case DOMINGO:
-      //Selecciono DOMINGO
-      lcd.setCursor(0, 1);
-      lcd.write(byte(0));//D seleccionada
-      //Deselecciono resto de dias
-      
-      //Deselecciono SABADO
-      lcd.setCursor(14, 1);
-      lcd.print("S");
-      //Deseleccionar_dias(diadelasemana);
-
-      //Deselecciono LUNES
-      lcd.setCursor(2, 1);
-      lcd.print("L");
-      break;
-    
-    case LUNES:
-      //Selecciono LUNES
-      lcd.setCursor(2, 1);
-      lcd.write(byte(1));//L seleccionada
-    
-      //Deselecciono DOMINGO
-      lcd.setCursor(0, 1);
-      lcd.print("D");
-
-      //Deselecciono MARTES
-      lcd.setCursor(4, 1);
-      lcd.print("Ma");
-      break;
-    
-    case MARTES:
-      //Selecciono MARTES
-      lcd.setCursor(4, 1);
-      lcd.write(byte(2));//M seleccionada
-      lcd.write(byte(3));//a seleccionada
-    
-      //Deselecciono LUNES
-      lcd.setCursor(2, 1);
-      lcd.print("L");
-
-      //Deselecciono MIERCOLES
-      lcd.setCursor(7, 1);
-      lcd.print("Mi");
-      break;
-    
-    case MIERCOLES:
-      //Selecciono MIERCOLES
-      lcd.setCursor(7, 1);
-      lcd.write(byte(2));//M seleccionada
-      lcd.write(byte(4));//i seleccionada
-    
-      //Deselecciono MARTES
-      lcd.setCursor(4, 1);
-      lcd.print("Ma");
-
-      //Deselecciono JUEVES
-      lcd.setCursor(10, 1);
-      lcd.print("J");
-      break;
-    
-    case JUEVES:
-      //Selecciono JUEVES
-      lcd.setCursor(10, 1);
-      lcd.write(byte(5));//J seleccionada
-    
-      //Deselecciono MIERCOLES
-      lcd.setCursor(7, 1);
-      lcd.print("Mi");
-
-      //Deselecciono VIERNES
-      lcd.setCursor(12, 1);
-      lcd.print("V");
-      break;
-    
-    case VIERNES:
-      //Selecciono VIERNES
-      lcd.setCursor(12, 1);
-      lcd.write(byte(6));//V seleccionada
-    
-      //Deselecciono JUEVES
-      lcd.setCursor(10, 1);
-      lcd.print("J");
-
-      //Deselecciono SABADO
-      lcd.setCursor(14, 1);
-      lcd.print("S");
-      break;
-    
-    case SABADO:
-      //Selecciono SABADO
-      lcd.setCursor(14, 1);
-      lcd.write(byte(7));//S seleccionada
-    
-      //Deselecciono VIERNES
-      lcd.setCursor(12, 1);
-      lcd.print("V");
-
-      //Deselecciono DOMINGO
-      lcd.setCursor(0, 1);
-      lcd.print("D");
-      break;
-  }
-}
 
 
 void loop(){
@@ -840,6 +1031,9 @@ void loop(){
         estado_menu=MENU_PRINCIPAL;
         delay(200);
       }
+
 		 break;
+		 
 	}
+	
 }

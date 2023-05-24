@@ -432,8 +432,13 @@
 
 */
 
+//Cantidad de dias por mes, usado para calcular la posicion en memoria
 int meses[] = { 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+
+//Indice del inicio del primer evento de cada dia.
 int eventos[] = {0, 7, 16, 24, 32, 40, 48};
+
+//Decodificador de horas, segun el valor guardado en la EEPROM para la parte eventos, se obtiene la hora y los minutos
 int horas[96][2] = {{0, 0}, {0, 15}, {0, 30}, {0, 45}, {1, 0}, {1, 15}, {1, 30}, {1, 45}, {2, 0}, {2, 15}, {2, 30}, {2, 45}, {3, 0}, {3, 15}, {3, 30}, {3, 45},
   {4, 0}, {4, 15}, {4, 30}, {4, 45}, {5, 0}, {5, 15}, {5, 30}, {5, 45}, {6, 0}, {6, 15}, {6, 30}, {6, 45}, {7, 0}, {7, 15}, {7, 30}, {7, 45},
   {8, 0}, {8, 15}, {8, 30}, {8, 45}, {9, 0}, {9, 15}, {9, 30}, {9, 45}, {10, 0}, {10, 15}, {10, 30}, {10, 45}, {11, 0}, {11, 15}, {11, 30},
@@ -445,6 +450,13 @@ int horas[96][2] = {{0, 0}, {0, 15}, {0, 30}, {0, 45}, {1, 0}, {1, 15}, {1, 30},
 
 // Setup clock
 DS3231 RTC;
+
+//Pin usado para disparar la interrupción, la salida SQW del RTC debe conectarse a el pin a usar
+#define CLINT 3
+
+volatile byte tick = 1;
+
+byte alarmBits = 0b00001110; // Cada un minuto
 
 byte Year ;
 byte Month ;
@@ -469,66 +481,58 @@ void setup() {
   Serial.begin(9600);
   while (!Serial);
 
-  Serial.println( crearActualizarEvento(2,1,3,15,3,30) );
+  Serial.println( crearActualizarEvento(2, 1, 3, 15, 3, 30) );
   Serial.println( fechaHoraEnEvento() );
 
   //DESCOMENTAR: Para setear la fecha y hora actual
   //RTC.setEpoch(1684723490);
 
+
+  //Interrupción de RTC
+  configuraInterrupcionRTC();
+
 }
 
 void loop() {
 
-  //    Serial.println( eepromPositionDecoder() );
+  if (tick) {
+    tick = 0;
 
-  //    Serial.print("Evento: ");
-  //setEvent(7,4,17,30,17,45);
+    //Si NO es feriado continua
+    if (!verificaFeriado()) {
+      //Si la fecha y Hora del RTC esta en el horario definido por un evento (INICIO - FIN) activa salida
+      if (fechaHoraEnEvento()) {
+        /*
+           TO DO: SALIDA DIGITAL ON
+        */
+      } else {
+        /*
+           TO DO: SALIDA DIGITAL OFF
+        */
+      }
+    }
 
-  delay(1000);
+    // Clear Alarm 1 flag
+    RTC.checkIfAlarm(1);
+  }
 
   /*
-
-      //Iteramos los dias del año en busqueda de el feriado del dia
-      for (int i = 0; i <= sizeof(daysFromYear); i++) {
-        //Comparamos el dia de hoy con el indice del array hasta encontrar el dia de hoy
-        if( actualDayOfYear == daysFromYear[i]) {
-          //Una vez encontrado consultamos si en esa posicion la EEPROM tiene valor 1, de ser así es feriado.
-          if( EEPROM.read(i+5) == 1 ) {
-            feriado = true;
-          }
-        }
-      }
-
-      if(!feriado) {
-
-      } else {
-      //1 seg * 60 * 5
-      //No vuelve a preguntar por 5 min.
-      delay(1000*60*5);
-      }
-
+    Serial.print(RTC.getYear(), DEC);
+    Serial.print("-");
+    Serial.print(RTC.getMonth(Century), DEC);
+    Serial.print("-");
+    Serial.print(RTC.getDate(), DEC);
+    Serial.print(" ");
+    Serial.print(RTC.getHour(h12, PM), DEC); //24-hr
+    Serial.print(":");
+    Serial.print(RTC.getMinute(), DEC);
+    Serial.print(":");
+    Serial.println(RTC.getSecond(), DEC);
+    Serial.print(" - ");
+    Serial.println(RTC.getDoW(), DEC);
+    Serial.println("---");
+    //Serial.println(EEPROM.read(1));
   */
-
-
-
-
-/*
-  Serial.print(RTC.getYear(), DEC);
-  Serial.print("-");
-  Serial.print(RTC.getMonth(Century), DEC);
-  Serial.print("-");
-  Serial.print(RTC.getDate(), DEC);
-  Serial.print(" ");
-  Serial.print(RTC.getHour(h12, PM), DEC); //24-hr
-  Serial.print(":");
-  Serial.print(RTC.getMinute(), DEC);
-  Serial.print(":");
-  Serial.println(RTC.getSecond(), DEC);
-  Serial.print(" - ");
-  Serial.println(RTC.getDoW(), DEC);
-  Serial.println("---");
-  //Serial.println(EEPROM.read(1));
-*/  
 
 }
 
@@ -543,7 +547,7 @@ bool verificaFeriado() {
 
   daysAccum += 55 + RTC.getDate();
 
-  if( EEPROM.read(daysAccum) == 1 ) {
+  if ( EEPROM.read(daysAccum) == 1 ) {
     return true;
   } else {
     return false;
@@ -552,17 +556,17 @@ bool verificaFeriado() {
 }
 
 void seteaFeriado(int dia, int mes) {
-  
+
   int indexMonthEeprom = RTC.getMonth(Century) - 1;
   int daysAccum = 0;
-  
+
   for (int i = 0; i < indexMonthEeprom; i++) {
     daysAccum += meses[i];
   }
-  
+
   daysAccum += 55 + RTC.getDate();
   EEPROM.write(daysAccum, 1);
-  
+
 }
 
 
@@ -610,7 +614,7 @@ bool fechaHoraEnEvento() {
 
   int indexEvent = eventos[RTC.getDoW() - 1];
 
-  for (int i = 0; i < 7; i=i+2) {
+  for (int i = 0; i < 7; i = i + 2) {
     int year = 2000 + RTC.getYear();
 
     //fechas horas codificadas
@@ -628,7 +632,7 @@ bool fechaHoraEnEvento() {
     DateTime fechaHoraFinal(year, RTC.getMonth(Century), RTC.getDate(), horaFinal, minutosFinal, 0);
     DateTime now = RTClib::now().unixtime();
 
-      // Obtener los valores de tiempo en segundos
+    // Obtener los valores de tiempo en segundos
     uint32_t nowUnix = now.unixtime();
     uint32_t inicialUnix = fechaHoraInicial.unixtime();
     uint32_t finalUnix = fechaHoraFinal.unixtime();
@@ -641,4 +645,27 @@ bool fechaHoraEnEvento() {
 
   return false;
 
+}
+
+void configuraInterrupcionRTC () {
+
+  // Set alarm 1 to fire at one-second intervals
+  RTC.turnOffAlarm(1);
+  RTC.setA1Time(0, 0, 0, 0, alarmBits, false, false, false);
+  // enable Alarm 1 interrupts
+  RTC.turnOnAlarm(1);
+  // clear Alarm 1 flag
+  RTC.checkIfAlarm(1);
+
+  pinMode(CLINT, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(CLINT), isr_TickTock, FALLING);
+
+  // Use builtin LED to blink
+  pinMode(LED_BUILTIN, OUTPUT);
+}
+
+void isr_TickTock() {
+  // interrupt signals to loop
+  tick = 1;
+  return;
 }

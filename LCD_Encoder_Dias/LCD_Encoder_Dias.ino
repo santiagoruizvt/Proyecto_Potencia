@@ -2,6 +2,9 @@
 #include <EEPROM.h>
 #include <TimerOne.h> //Para simular el reloj del RTC
 
+//******************************************************************************
+//	ETIQUETAS
+//******************************************************************************
 //Menu
 #define MENU_PRINCIPAL          0
 #define MENU_AJUSTE_FECHA_HORA  1
@@ -28,6 +31,8 @@
 #define INICIO_4	6
 #define FIN_4		  7
 
+#define CANT_RANGOS 4
+
 //Encoder
 #define DERECHA   1
 #define IZQUIERDA 2
@@ -37,12 +42,18 @@
 #define HORA    0
 #define MINUTOS 1
 
+
+//******************************************************************************
+//	VARIABLES
+//******************************************************************************
 int Encoder_OuputA  = 9;
 int Encoder_OuputB  = 8;
 int Encoder_Switch = 10;
+int Salida_Rele = 13;
 
 int Previous_Output;
 int diadelasemana=0;
+int diadelasemana_actual=0;
 int estado_menu=0;
 int estado_menu_anterior=0;
 int estado_ajuste=0;
@@ -51,8 +62,13 @@ int estado_prog_rango=0;
 int proximo_menu=0;
 int seg_anterior=0;
 int rango_a_programar=0;
-char Rango_num[8];
-//*******ESTRUCTURA DE FECHA Y HORA*****************************************
+char Rango_num[CANT_RANGOS*2];
+char Rangos_hoy[CANT_RANGOS*2];
+char codigo_hora_actual=0;
+char codigo_hora_actual_anterior=0;
+
+
+//ESTRUCTURA DE FECHA Y HORA
 struct RTC_Time
 {
   //FECHA
@@ -158,6 +174,8 @@ byte D[8] = {
 0b11111
 };
 /*
+//No entra porque la memoria del LCD permite hasta 8 caracteres especiales
+//Usamos en su lugar el símbolo '>'
 byte flecha[8] = {
 0b00000,
 0b00100,
@@ -174,6 +192,9 @@ const int rs = 7, en = 6, d4 = 5, d5 = 4, d6 = 3, d7 = 2; //Mention the pin numb
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
 void setup() {
+  
+  char BufferAux[50];
+
   // put your setup code here, to run once:
   lcd.begin(16, 2); //Initialise 16*2 LCD
   
@@ -192,6 +213,7 @@ void setup() {
   pinMode (Encoder_OuputB, INPUT);
   pinMode (Encoder_Switch, INPUT);
   Previous_Output = digitalRead(Encoder_OuputA); //Read the inital value of Output A
+  pinMode (Salida_Rele, OUTPUT);
   
   //Acá debería leer los datos del RTC
   //FECHA
@@ -211,10 +233,37 @@ void setup() {
   Rango_num[INICIO_2]=Rango_num[FIN_2]='2';
   Rango_num[INICIO_3]=Rango_num[FIN_3]='3';
   Rango_num[INICIO_4]=Rango_num[FIN_4]='4';
-  
+
+  #warning "Para las pruebas hardcodeo DOMINGO, pero este dato saldría del RTC"
+  diadelasemana_actual = DOMINGO;
+
+  #warning "Esto habria que hacerlo al inicio y cada vez que detecta un cambio de día, y cada vez que se reprograman los rangos"
+
+  for(int i=0; i<CANT_RANGOS*2; i++)
+  {
+    Rangos_hoy[i]=EEPROM.read(diadelasemana_actual*8+i);
+
+    if(i%2==0)
+      Serial.print("Inicio ");
+    else
+      Serial.print("Fin ");
+    
+    sprintf(BufferAux,"%d: %d\n",i,Rangos_hoy[i]);
+    Serial.print(BufferAux);
+  }
 }
 
-int Leer_Encoder(){
+//******************************************************************************
+// Función:				Leer_Encoder
+//
+// Descripción:		Devuelve la dirección del enconder o si se apretó el pulsador,
+//                teniendo prioridad el pulsador
+//
+// Parámetros:			void
+// Valor devuelto:	int  IZQUIERDA(antihorario), DERECHA(horario) o ENTER
+// 
+//******************************************************************************
+int Leer_Encoder(void){
   
   int giro_encoder=0;
 
@@ -245,7 +294,16 @@ int Leer_Encoder(){
   return(giro_encoder);
 }
 
-void Programacion_Semanal() {
+//******************************************************************************
+// Función:				Programacion_Semanal
+//
+// Descripción:		Se programan los rangos de encendido de cada día de la semana
+//
+// Parámetros:			void
+// Valor devuelto:	void  
+// 
+//******************************************************************************
+void Programacion_Semanal(void) {
 
   char BufferAux[5];
 
@@ -358,13 +416,14 @@ void Programacion_Semanal() {
 
     estado_prog_sem++;
     rango_a_programar=0;
+    estado_prog_rango=0;
     break;
 
     case 3:
       if(Programar_Rango(rango_a_programar)==1)
         rango_a_programar++;
 
-      if(rango_a_programar > FIN_4)
+      if(rango_a_programar >= (CANT_RANGOS*2))
         estado_prog_sem++;
     break;
 
@@ -382,6 +441,15 @@ void Programacion_Semanal() {
 }
 
 
+//******************************************************************************
+// Función:				Programar_Rango
+//
+// Descripción:		Se programan las horas y minutos de cada rango
+//
+// Parámetros:			int rango: INICIO1,FIN1,INICIO2,FIN2...etc
+// Valor devuelto:	bool: devuelve un 1 cuando ya se programó ese rango, sino 0  
+// 
+//******************************************************************************
 bool Programar_Rango(int rango)
 {
   //Por cada rango a programar va a entrar acá
@@ -497,6 +565,18 @@ bool Programar_Rango(int rango)
   return(0);
 }
 
+//******************************************************************************
+// Función:				Leer_Rangos_EEPROM
+//
+// Descripción:		Se leen las horas o minutos (según se solicite) guardado 
+//                en la EEPROM del día solicitado en el rango solicitado.
+//
+// Parámetros:			int dia (LUNES, MARTES... etc)
+//                  int rango (INICIO1, FIN1, INICIO2... etc)
+// Valor devuelto:	bool hora_min: aclaras si queres recibir la hora o los mins   
+//                                 (HORA o MINUTOS)
+// 
+//******************************************************************************
 char Leer_Rangos_EEPROM(int dia, int rango, bool hora_min)
 {
   char codigo_hora=0;
@@ -517,6 +597,20 @@ char Leer_Rangos_EEPROM(int dia, int rango, bool hora_min)
     
 }
 
+//******************************************************************************
+// Función:				Escribir_Rangos_EEPROM
+//
+// Descripción:		Se escribe en la EEPROM el código generado por las horas y 
+//                minutos en la dirección generada por el día y rango indicados 
+//
+// Parámetros:			int dia (LUNES, MARTES... etc)
+//                  int rango (INICIO1, FIN1, INICIO2... etc)
+//                  int hora
+//                  int min (múltiplo de 15 preferentemente)
+//
+// Valor devuelto:	void
+// 
+//******************************************************************************
 void Escribir_Rangos_EEPROM(int dia, int rango, int hora, int min)
 {
   char codigo_hora=0;
@@ -530,6 +624,16 @@ void Escribir_Rangos_EEPROM(int dia, int rango, int hora, int min)
 
 }
 
+//******************************************************************************
+// Función:				Seleccion_dias
+//
+// Descripción:		Se utiliza el encoder para seleccionar el día de la semana
+//
+// Parámetros:			void
+//
+// Valor devuelto:	void
+// 
+//******************************************************************************
 void Seleccion_dias(void)
 {
   switch(diadelasemana)
@@ -638,7 +742,18 @@ void Seleccion_dias(void)
   }
 }
 
-void Menu_Principal(){
+//******************************************************************************
+// Función:				Menu_Principal
+//
+// Descripción:		Muestra la fecha y la hora y utiliza el encoder para elegir
+//                ajustar la hora/fecha o configurar la programación
+//
+// Parámetros:			void
+//
+// Valor devuelto:	void
+// 
+//******************************************************************************
+void Menu_Principal(void){
 
   char BufferAux[16];
 
@@ -664,16 +779,28 @@ void Menu_Principal(){
   }
 
 
-  Serial.print("proximo_menu:");
-  Serial.println(proximo_menu);
+  //Serial.print("proximo_menu:");
+  //Serial.println(proximo_menu);
   
   Seleccion_Principal();
+
+  //Hago titilar el ':' para que se vea que está vivo 
+  Efecto_Titilar(12,0,1,50);
 }
 
-void Seleccion_Principal()
+//******************************************************************************
+// Función:				Seleccion_Principal
+//
+// Descripción:		Dibuja una flecha en el menu seleccionado dentro del principal
+//                Si se presiona ENTER, entra a ese menu
+//
+// Parámetros:			void
+//
+// Valor devuelto:	void
+// 
+//******************************************************************************
+void Seleccion_Principal(void)
 {
-  //Dibuja una flecha en el menu seleccionado
-  //Si se presiona ENTER, entra a ese menu
 
   switch(Leer_Encoder())
   {
@@ -707,7 +834,18 @@ void Seleccion_Principal()
 
 }
 
-void Seleccion_Configuracion()
+//******************************************************************************
+// Función:				Seleccion_Configuracion
+//
+// Descripción:		Muestra el menú Configuración y dibuja una flecha en el menu 
+//                seleccionado. Si se presiona ENTER, entra a ese menu.
+//
+// Parámetros:			void
+//
+// Valor devuelto:	void
+// 
+//******************************************************************************
+void Seleccion_Configuracion(void)
 {
   lcd.setCursor(1, 0);
   lcd.print("Prog. semanal");
@@ -764,7 +902,17 @@ void Seleccion_Configuracion()
 
 }
 
-void Reloj(){
+//******************************************************************************
+// Función:				Reloj
+//
+// Descripción:		Reloj en base al timer de 1seg para simular el RTC
+//
+// Parámetros:			void
+//
+// Valor devuelto:	void
+// 
+//******************************************************************************
+void Reloj(void){
   if(ActualTime.seg >59)
   {
     ActualTime.seg=0;
@@ -779,12 +927,33 @@ void Reloj(){
   }
 }
 
-void ISR_Segundo(){
+//******************************************************************************
+// Función:				ISR_Segundo
+//
+// Descripción:		Timer de 1seg
+//
+// Parámetros:			void
+//
+// Valor devuelto:	void
+// 
+//******************************************************************************
+void ISR_Segundo(void){
+
   ActualTime.seg++;
+
 }
 
-
-void Ajuste_Reloj()
+//******************************************************************************
+// Función:				Ajuste_Reloj
+//
+// Descripción:		Menú para modificar la hora y fecha actual usando el encoder
+//
+// Parámetros:			void
+//
+// Valor devuelto:	void
+// 
+//******************************************************************************
+void Ajuste_Reloj(void)
 {
   char BufferAux[16];
 
@@ -941,6 +1110,7 @@ void Ajuste_Reloj()
       ActualTime = AjusteTime;
 
 #warning "Habria que indicar una falla si se elige una fecha que no existe como 31/02/24"
+#warning "Los datos seleccionados deberian guardarse en el RTC"
 
       delay(3000);
       estado_ajuste=0;
@@ -949,6 +1119,19 @@ void Ajuste_Reloj()
   }
 }
 
+//******************************************************************************
+// Función:				Efecto_Titilar
+//
+// Descripción:		Efecto que hace titilar los digitos de pantalla cada 1 seg
+//
+// Parámetros:			int col (columna inicial)
+//                  int fila (fila inicial)
+//                  int digitos (digitos a hacer titilar)
+//                  int delay_ms (para ajustar el tiempo en off)
+//
+// Valor devuelto:	void
+// 
+//******************************************************************************
 void Efecto_Titilar(int col,int fila,int digitos,int delay_ms)
 {
   if(ActualTime.seg != seg_anterior)
@@ -964,6 +1147,19 @@ void Efecto_Titilar(int col,int fila,int digitos,int delay_ms)
   }
 }
 
+//******************************************************************************
+// Función:				Modificar_Variable
+//
+// Descripción:		Permite modificar una variable con el encoder entre un mínimo 
+//                y un máximo
+//
+// Parámetros:			int variable_a_modificar
+//                  int minimo
+//                  int maximo
+//
+// Valor devuelto:	int: devuelve la variable modificada
+// 
+//******************************************************************************
 int Modificar_Variable(int variable_a_modificar, int minimo, int maximo)
 {
   switch(Leer_Encoder())
@@ -987,9 +1183,15 @@ int Modificar_Variable(int variable_a_modificar, int minimo, int maximo)
   return(variable_a_modificar);
 }
 
-
-
+//******************************************************************************
+// Función:				loop
+//
+// Descripción:		Bucle principal
+// 
+//******************************************************************************
 void loop(){
+
+  char BufferAux[50];
 
 	Reloj();
 
@@ -1035,5 +1237,29 @@ void loop(){
 		 break;
 		 
 	}
-	
+
+  codigo_hora_actual = (ActualTime.hora*4)+(ActualTime.min/15);
+
+  if(codigo_hora_actual != codigo_hora_actual_anterior)
+  {
+    sprintf(BufferAux,"Codigo actual: %d\n",codigo_hora_actual);
+    Serial.print(BufferAux);
+    codigo_hora_actual_anterior=codigo_hora_actual;
+  }
+
+  //Sólo con esto manejo la salida
+  if(((codigo_hora_actual>=Rangos_hoy[INICIO_1])&&(codigo_hora_actual<Rangos_hoy[FIN_1]))||
+     ((codigo_hora_actual>=Rangos_hoy[INICIO_2])&&(codigo_hora_actual<Rangos_hoy[FIN_2]))||
+     ((codigo_hora_actual>=Rangos_hoy[INICIO_3])&&(codigo_hora_actual<Rangos_hoy[FIN_3]))||
+     ((codigo_hora_actual>=Rangos_hoy[INICIO_4])&&(codigo_hora_actual<Rangos_hoy[FIN_4])))
+  {
+    //Si se encuentra dentro de alguno de los rangos, alimento la carga
+    digitalWrite(Salida_Rele,1);
+  }
+  else
+  {
+    //Si se encuentra fuera de los rangos dejo de alimentar la carga
+    digitalWrite(Salida_Rele,0);
+  }
+
 }

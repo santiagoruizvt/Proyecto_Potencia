@@ -1,6 +1,6 @@
-# Proyecto_Potencia
+# RTC - Proyecto Potencia
 
-Repositorio destinado al proyecto de la materia Electrónica de Potencia
+Funcione creadas para la interacción con el RTC y la EEPROM.
 
 ## verificaFeriado()
 
@@ -8,16 +8,52 @@ Funcion que toma la fecha actual y devuelve true si es feriado.
 
 ## seteaFeriado(int dia, int mes)
 
+# Parametros
+- int day
+- int mes
+
+# Descripción
 Funcion que carga feriado en la EEPROM con los parametros dia y mes.
 
-## crearActualizarEvento(int day, int event, int horaInicio, int minutosInicio, int horaFin, int minutosFin)
+# Ejemplo
 
+```
+//Se marca el dia 25 de Mayo como feriado.
+seteaFeriado(25,5)
+
+
+```
+
+## crearActualizarEvento
+
+# Parametros
+- int day
+- int event
+- int horaInicio
+- int minutosInicio
+- int horaFin
+- int minutosFin
+
+# Descripción
 Funcion para crear o actualizar un evento, day es el dia de la semana siendo 1 Domingo y 7 Sabado, el evento va de 1 a 4
 las horas de inicio y fin van de 0 a 24 y los minutos iniciales y finales deben ser multiplos de 15 (0,15,30,45). Faltan
 validaciónes para ver que no se superpongan eventos y que la hora inicial sea mayor a la final.
 
+# Ejemplo
+
+```
+//Se crea/actualiza el Evento 1, del dia Lunes, desde las 8:00 hasta las 12:30.
+crearActualizarEvento(2, 1, 8, 0, 12, 30)
+
+
+```
+
 ## fechaHoraEnEvento()
 
+# Parametros
+Sin Parametros
+
+# Descripción
 Funcion que verifica si la hora se encuentra dentro de alguna franja delimitada por los eventos, si es asi devuelve true
 sino false.
 

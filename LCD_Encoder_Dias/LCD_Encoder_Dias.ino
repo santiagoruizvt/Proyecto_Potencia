@@ -188,7 +188,7 @@ byte flecha[8] = {
 };*/
 /**************************/
 
-const int rs = 7, en = 6, d4 = 5, d5 = 4, d6 = 3, d7 = 2; //Mention the pin number for LCD connection
+const int rs = 7, en = 6, d4 = 14, d5 = 15, d6 = 16, d7 = 17; //Mention the pin number for LCD connection
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
 void setup() {

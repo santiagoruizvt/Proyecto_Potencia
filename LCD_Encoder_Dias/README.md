@@ -1,7 +1,6 @@
-##Proyecto Electrónica de Potencia
+## Proyecto Electrónica de Potencia
 
-####CONTROL DE ENERGÍA POR TIEMPOS DE OPERACIÓN
-
+# CONTROL DE ENERGÍA POR TIEMPOS DE OPERACIÓN
 
 **Planilla para la correcta interpretación del guardado de variables en memoria:** 
 

@@ -10,6 +10,4 @@ https://docs.google.com/spreadsheets/d/1By1mbL209ivBhk7KslNObIQkLeI79eL5sD7_9IqC
 
 - Agregado de lectura de uSD para tomar la configuración.
 
-- Control del backlight del lcd con un transistor conectado a una salida.
-
 - Creación de programación default para la primera vez que se carga el firmware.

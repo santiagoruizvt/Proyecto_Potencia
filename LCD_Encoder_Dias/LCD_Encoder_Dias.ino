@@ -53,6 +53,8 @@
 #define ES_FERIADO    1
 #define NO_ES_FERIADO 0
 
+#define TIEMPO_PARA_APAGAR_LCD  60 //en segundos
+
 //******************************************************************************
 //	VARIABLES
 //******************************************************************************
@@ -60,6 +62,7 @@ int Encoder_OuputA  = 9;
 int Encoder_OuputB  = 8;
 int Encoder_Switch = 10;
 int Salida_Rele = 13;
+int Salida_Backlight = 4;
 
 int Previous_Output;
 int diadelasemana=0;
@@ -80,6 +83,7 @@ char ultimo_dia=0;
 bool modificacion_realizada=0;
 bool cursor_feriado=0;
 bool feriado=0;
+int tiempo_sin_pulsar=TIEMPO_PARA_APAGAR_LCD;
 
 //ESTRUCTURA DE FECHA Y HORA
 struct RTC_Time
@@ -259,6 +263,7 @@ void setup()
   pinMode (Encoder_Switch, INPUT);
   Previous_Output = digitalRead(Encoder_OuputA); //Read the inital value of Output A
   pinMode (Salida_Rele, OUTPUT);
+  pinMode (Salida_Backlight, OUTPUT);
 
   Leer_Fecha_Hora_RTC(ActualTime);
 
@@ -274,6 +279,8 @@ void setup()
   //Cargo los rangos del día de hoy
   Cargar_Rangos();
   ultimo_dia=ActualTime.DoW;
+
+  tiempo_sin_pulsar=TIEMPO_PARA_APAGAR_LCD;
 }
 
 //******************************************************************************
@@ -347,10 +354,12 @@ int Leer_Encoder(void)
     if (digitalRead(Encoder_OuputA) != Previous_Output) 
     { 
       giro_encoder = DERECHA;
+      tiempo_sin_pulsar=TIEMPO_PARA_APAGAR_LCD;
     } 
     else
     {
       giro_encoder = IZQUIERDA;
+      tiempo_sin_pulsar=TIEMPO_PARA_APAGAR_LCD;
     }
   }
   
@@ -363,7 +372,11 @@ int Leer_Encoder(void)
     {
       //Espero a que suelte el pulsador
     };
-    return(ENTER);  
+
+    if(tiempo_sin_pulsar>0)  //Si está el backlight apagado, no realiza ninguna acción el enter, solo prende el backlight
+      return(ENTER);  
+    
+    tiempo_sin_pulsar=TIEMPO_PARA_APAGAR_LCD;
   }
 
   return(giro_encoder);
@@ -1067,6 +1080,9 @@ void Reloj(void){
 void ISR_Segundo(void){
 
   ActualTime.seg++;
+  
+  if(tiempo_sin_pulsar>0)
+    tiempo_sin_pulsar--;
 
 }
 
@@ -1825,4 +1841,11 @@ void loop(){
     // Clear Alarm 1 flag
     RTC.checkIfAlarm(1);
   }
+
+  //Controlo el backlight del lcd
+  if(!tiempo_sin_pulsar)
+    digitalWrite(Salida_Backlight,1);//Si pasa cierto tiempo en el que no se tocó el encoder, se apaga el display
+  else
+    digitalWrite(Salida_Backlight,0);//Si se toca el encoder, se enciende
+  
 }

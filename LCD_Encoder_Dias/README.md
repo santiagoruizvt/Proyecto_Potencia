@@ -4,20 +4,20 @@
 
 ## Pines del Arduino UNO utilizados:
                 
-0. 
+0. Salida_Rele
 1. 
 2. 
 3. RTC_SQW
 4. LCD_Backlight
-5. 
+5. Encoder_Switch
 6. LCD_EN
 7. LCD_RS
 8. Encoder_OutputB
 9. Encoder_OutputA
-10. Encoder_Switch
-11. 
-12. 
-13. Salida_Rele
+10. SD_CS
+11. SD_MOSI
+12. SD_MISO
+13. SD_SCK
 14. (A0)	LCD_D4
 15. (A1)	LCD_D5
 16. (A2)	LCD_D6
@@ -32,6 +32,6 @@ https://docs.google.com/spreadsheets/d/1By1mbL209ivBhk7KslNObIQkLeI79eL5sD7_9IqC
 
 **Posibles mejoras:** 
 
-- Agregado de lectura de uSD para tomar la configuración.
+- Agregado de lectura de uSD para tomar la configuración semanal.
 
 - Creación de programación default para la primera vez que se carga el firmware.

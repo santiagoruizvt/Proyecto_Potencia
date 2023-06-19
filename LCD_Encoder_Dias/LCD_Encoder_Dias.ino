@@ -1,8 +1,12 @@
 #include <LiquidCrystal.h> 
 #include <EEPROM.h>
-#include <TimerOne.h> //Para simular el reloj del RTC
 #include <DS3231.h>
 #include <Wire.h>
+#include <SPI.h>
+#include <SD.h>
+#ifdef TIMER_INTERNO
+#include <TimerOne.h> //Para simular el reloj del RTC
+#endif
 
 //******************************************************************************
 //	ETIQUETAS
@@ -16,6 +20,7 @@
 #define MENU_CONFIGURACION      2
 #define MENU_PROGRAMA_SEMANAL   3
 #define MENU_FERIADOS           4
+#define MENU_NUEVOS_FERIADOS    5
 
 //Dias de la semana
 #define LUNES     1
@@ -36,7 +41,11 @@
 #define INICIO_4	6
 #define FIN_4		  7
 
-#define ULTIMA_POSICION_EVENTOS 55
+
+#define PRIMERA_POSICION_EVENTOS  0
+#define ULTIMA_POSICION_EVENTOS   PRIMERA_POSICION_EVENTOS+55
+#define PRIMERA_POSICION_FERIADOS ULTIMA_POSICION_EVENTOS+1
+#define ULTIMA_POSICION_FERIADOS  PRIMERA_POSICION_FERIADOS+365
 
 #define CANT_RANGOS 4
 
@@ -55,14 +64,19 @@
 
 #define TIEMPO_PARA_APAGAR_LCD  60 //en segundos
 
+//Pin usado para disparar la interrupción, la salida SQW del RTC debe conectarse a el pin a usar
+#define CLINT 3
+
+#define SSPin 10 //CS de la uSD
+
 //******************************************************************************
 //	VARIABLES
 //******************************************************************************
-int Encoder_OuputA  = 9;
-int Encoder_OuputB  = 8;
-int Encoder_Switch = 10;
-int Salida_Rele = 13;
-int Salida_Backlight = 4;
+const int Encoder_OuputA PROGMEM = 9;
+const int Encoder_OuputB PROGMEM = 8;
+const int Encoder_Switch PROGMEM = 5;
+const int Salida_Rele PROGMEM = 0;
+const int Salida_Backlight PROGMEM = 4; 
 
 int Previous_Output;
 int diadelasemana=0;
@@ -106,110 +120,23 @@ RTC_Time AuxTime;
 // Setup clock
 DS3231 RTC;
 
+//Estructura para el archivo de la uSD
+//File myFile;
 
-//Pin usado para disparar la interrupción, la salida SQW del RTC debe conectarse a el pin a usar
-#define CLINT 3
 
 volatile byte tick = 1;
 
-byte alarmBits = 0b00001110; // Cada un minuto
+byte alarmBits = 0b00001110; // Cada un min
 
 bool Century  = false;
 bool h12=0;//Modo 24HS
 bool PM ;
 
 //Cantidad de dias por mes, usado para calcular la posicion en memoria
-int cant_dias_mes[] = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+const int cant_dias_mes[] = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
 
-/***Letras seleccionadas***/
-byte L[8] = {
-0b01111,
-0b01111,
-0b01111,
-0b01111,
-0b01111,
-0b01111,
-0b00000,
-0b11111
-};
 
-byte M[8] = {
-0b01110,
-0b00100,
-0b01010,
-0b01010,
-0b01110,
-0b01110,
-0b01110,
-0b11111
-};
-
-byte a[8] = {
-0b11111,
-0b11111,
-0b10001,
-0b11110,
-0b10000,
-0b01110,
-0b10000,
-0b11111
-};
-
-byte i[8] = {
-0b11011,
-0b11111,
-0b10011,
-0b11011,
-0b11011,
-0b11011,
-0b10001,
-0b11111
-};
-
-byte J[8] = {
-0b10000,
-0b11101,
-0b11101,
-0b11101,
-0b11101,
-0b01101,
-0b10011,
-0b11111
-};
-
-byte V[8] = {
-0b01110,
-0b01110,
-0b01110,
-0b01110,
-0b01110,
-0b10101,
-0b11011,
-0b11111
-};
-
-byte S[8] = {
-0b10001,
-0b01110,
-0b01111,
-0b10001,
-0b11110,
-0b01110,
-0b10001,
-0b11111
-};
-
-byte D[8] = {
-0b00011,
-0b01101,
-0b01110,
-0b01110,
-0b01110,
-0b01101,
-0b00011,
-0b11111
-};
 /*
 //No entra porque la memoria del LCD permite hasta 8 caracteres especiales
 //Usamos en su lugar el símbolo '>'
@@ -225,9 +152,19 @@ byte flecha[8] = {
 };*/
 /**************************/
 
-const int rs = 7, en = 6, d4 = 14, d5 = 15, d6 = 16, d7 = 17; //Mention the pin number for LCD connection
+//Mention the pin number for LCD connection
+const int rs PROGMEM = 7;
+const int en PROGMEM = 6;
+const int d4 PROGMEM = 14;
+const int d5 PROGMEM = 15;
+const int d6 PROGMEM = 16;
+const int d7 PROGMEM = 17; 
+
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
+int min_ant,seg_ant;
+
+bool estado_uSD=0;
 //******************************************************************************
 // Función:				setup
 //
@@ -236,7 +173,94 @@ LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 //******************************************************************************
 void setup() 
 {
+  /***Letras seleccionadas***/
+  byte L[8] = {
+  0b01111,
+  0b01111,
+  0b01111,
+  0b01111,
+  0b01111,
+  0b01111,
+  0b00000,
+  0b11111
+  };
 
+  byte M[8] = {
+  0b01110,
+  0b00100,
+  0b01010,
+  0b01010,
+  0b01110,
+  0b01110,
+  0b01110,
+  0b11111
+  };
+
+  byte a[8] = {
+  0b11111,
+  0b11111,
+  0b10001,
+  0b11110,
+  0b10000,
+  0b01110,
+  0b10000,
+  0b11111
+  };
+
+  byte i[8] = {
+  0b11011,
+  0b11111,
+  0b10011,
+  0b11011,
+  0b11011,
+  0b11011,
+  0b10001,
+  0b11111
+  };
+
+  byte J[8] = {
+  0b10000,
+  0b11101,
+  0b11101,
+  0b11101,
+  0b11101,
+  0b01101,
+  0b10011,
+  0b11111
+  };
+
+  byte V[8] = {
+  0b01110,
+  0b01110,
+  0b01110,
+  0b01110,
+  0b01110,
+  0b10101,
+  0b11011,
+  0b11111
+  };
+
+  byte S[8] = {
+  0b10001,
+  0b01110,
+  0b01111,
+  0b10001,
+  0b11110,
+  0b01110,
+  0b10001,
+  0b11111
+  };
+
+  byte D[8] = {
+  0b00011,
+  0b01101,
+  0b01110,
+  0b01110,
+  0b01110,
+  0b01101,
+  0b00011,
+  0b11111
+  };
   // Begin I2C communication
   Wire.begin();
 
@@ -256,7 +280,9 @@ void setup()
   lcd.createChar(6,V);
   lcd.createChar(7,S);
   
+#ifdef DEBUG_SERIE
   Serial.begin(9600);
+#endif
   
   pinMode (Encoder_OuputA, INPUT);
   pinMode (Encoder_OuputB, INPUT);
@@ -267,9 +293,11 @@ void setup()
 
   Leer_Fecha_Hora_RTC(ActualTime);
 
+#ifdef TIMER_INTERNO
   //Para tener un timer de 1seg
   Timer1.initialize(1000000);
   Timer1.attachInterrupt(ISR_Segundo);
+#endif
 
   Rango_num[INICIO_1]=Rango_num[FIN_1]='1';
   Rango_num[INICIO_2]=Rango_num[FIN_2]='2';
@@ -281,6 +309,117 @@ void setup()
   ultimo_dia=ActualTime.DoW;
 
   tiempo_sin_pulsar=TIEMPO_PARA_APAGAR_LCD;
+
+  //Lee si hay feriados en la uSD para agregar
+  leerFeriadosDeSd();
+
+}
+
+//******************************************************************************
+// Función:				  leerFeriadosDeSd
+//
+// Descripción:		  Lee los feriados de la uSD y los agrega en la EEPROM
+//
+// Parámetros:			void
+// Valor devuelto:	void
+// 
+//******************************************************************************
+void leerFeriadosDeSd(void) 
+{
+#ifdef DEBUG_SERIE
+  char BufferAux[25];
+#endif
+  //Estructura para el archivo de la uSD
+  File myFile;
+  int feriado_anterior=PRIMERA_POSICION_FERIADOS;
+  bool hubo_cambio=0;
+
+#ifdef DEBUG_SERIE
+  Serial.print(F("Inicializando tarjeta..."));
+  delay(50);
+#endif
+
+  if (!SD.begin(SSPin)) 
+  {
+    estado_uSD=0;
+#ifdef DEBUG_SERIE
+    Serial.print(F("Falló la inicialización de la uSD\n"));
+    delay(50);
+#endif
+  }
+  else
+  {
+    //Si entra acá es porque está la uSD presente
+    //La leo solo si no la leí previamente desde que está colocada 
+
+    if(!estado_uSD)
+    {
+      //Abre el archivo de feriados
+      myFile = SD.open("feriados.txt");
+
+      if(myFile) 
+      {
+        estado_uSD = 1;
+
+#ifdef DEBUG_SERIE
+        Serial.print(F("if TRUE\n"));
+        delay(50);
+#endif
+
+        while (myFile.available()) 
+        {
+          String feriado = myFile.readStringUntil(','); // Lee hasta encontrar ,
+
+          if((feriado.toInt()>=PRIMERA_POSICION_FERIADOS)&&(feriado.toInt()<=ULTIMA_POSICION_FERIADOS))
+          {
+            if(EEPROM.read(feriado.toInt())!=1)
+            {
+              EEPROM.write(feriado.toInt(), 1);
+              hubo_cambio=1;
+            }
+#ifdef DEBUG_SERIE
+            sprintf(BufferAux,"feriado: %d \n",feriado.toInt());
+            Serial.print(BufferAux);
+#endif
+            //Borro todas las posiciones que no estén en la microSD
+            for(int i=feriado_anterior;i<feriado.toInt();i++)
+            {
+              if(EEPROM.read(i)!=0)
+              {
+                EEPROM.write(i, 0);
+                hubo_cambio=1;
+              }
+            }
+            
+            feriado_anterior = feriado.toInt()+1;
+          }
+        }
+
+        if((feriado_anterior>PRIMERA_POSICION_FERIADOS)&&(feriado_anterior<=ULTIMA_POSICION_FERIADOS))
+        {          
+          //Borro todas las posiciones que faltan de la uSD
+          for(int i=feriado_anterior;i<=ULTIMA_POSICION_FERIADOS;i++)
+          {
+            if(EEPROM.read(i)!=0)
+              EEPROM.write(i, 0);
+          }
+        }
+
+        if(hubo_cambio)
+          estado_menu = MENU_NUEVOS_FERIADOS;
+
+        // Cerrar el archivo
+        myFile.close();
+      }
+      else 
+      {
+        estado_uSD=0;
+#ifdef DEBUG_SERIE
+        Serial.print(F("Error leyendo feriados.txt"));
+#endif
+      }
+    }
+  }
 }
 
 //******************************************************************************
@@ -317,21 +456,23 @@ void Leer_Fecha_Hora_RTC(RTC_Time& Time)
 //******************************************************************************
 void Cargar_Rangos(void)
 {
+#ifdef DEBUG_SERIE
   char BufferAux[50];
+#endif
 
   for(int i=0; i<CANT_RANGOS*2; i++)
   {
     Rangos_hoy[i]=EEPROM.read((ActualTime.DoW-1)*8+i);
 
-    #ifdef DEBUG_SERIE
+#ifdef DEBUG_SERIE
       if(i%2==0)
-        Serial.print("Inicio ");
+        Serial.print(F("Inicio "));
       else
-        Serial.print("Fin    ");
+        Serial.print(F("Fin    "));
       
       sprintf(BufferAux,"%c: %d\n",Rango_num[i],Rangos_hoy[i]);
       Serial.print(BufferAux);
-    #endif
+#endif
   }
 }
 
@@ -404,9 +545,9 @@ void Programacion_Semanal(void)
 
     case 0:
       lcd.setCursor(0, 0);
-      lcd.print("Seleccionar dia");
+      lcd.print(F("Seleccionar dia"));
       lcd.setCursor(0, 1);
-      lcd.print("D L Ma Mi J V S");
+      lcd.print(F("D L Ma Mi J V S"));
 
       //Selecciono DOMINGO
       //lcd.setCursor(0, 1);
@@ -431,11 +572,11 @@ void Programacion_Semanal(void)
           if(diadelasemana > DOMINGO)
             diadelasemana = LUNES;
 
-            #ifdef DEBUG_SERIE
-              Serial.print("Variable: ");
+#ifdef DEBUG_SERIE
+              Serial.print(F("Variable: "));
               Serial.print(diadelasemana);
-              Serial.print("\n");
-            #endif
+              Serial.print(F("\n"));
+#endif
 
           delay(50);
         break;
@@ -445,11 +586,11 @@ void Programacion_Semanal(void)
           if(diadelasemana < LUNES)
             diadelasemana = DOMINGO;
 
-            #ifdef DEBUG_SERIE
-              Serial.print("Variable: ");
+#ifdef DEBUG_SERIE
+              Serial.print(F("Variable: "));
               Serial.print(diadelasemana);
-              Serial.print("\n");
-            #endif
+              Serial.print(F("\n"));
+#endif
 
           delay(50);
         break;
@@ -472,35 +613,35 @@ void Programacion_Semanal(void)
     {
       default:
         diadelasemana=DOMINGO;
-        lcd.print("DOMINGO");
+        lcd.print(F("DOMINGO"));
       break;
 
       case DOMINGO:
-        lcd.print("DOMINGO");
+        lcd.print(F("DOMINGO"));
       break;
       
       case LUNES:
-        lcd.print("LUNES");
+        lcd.print(F("LUNES"));
       break;
       
       case MARTES:
-        lcd.print("MARTES");
+        lcd.print(F("MARTES"));
       break;
       
       case MIERCOLES:
-        lcd.print("MIERCOLES");
+        lcd.print(F("MIERCOLES"));
       break;
       
       case JUEVES:
-        lcd.print("JUEVES");
+        lcd.print(F("JUEVES"));
       break;
       
       case VIERNES:
-        lcd.print("VIERNES");
+        lcd.print(F("VIERNES"));
       break;
       
       case SABADO:
-        lcd.print("SABADO");
+        lcd.print(F("SABADO"));
       break;
     }
 
@@ -520,9 +661,9 @@ void Programacion_Semanal(void)
 
     case 4:
       lcd.setCursor(0, 0);
-      lcd.print("Config guardada ");
+      lcd.print(F("Config guardada "));
       lcd.setCursor(0, 1);
-      lcd.print("   con exito    ");
+      lcd.print(F("   con exito    "));
       delay(3000);
       estado_menu=MENU_PRINCIPAL;
       estado_prog_sem=0;
@@ -556,19 +697,19 @@ bool Programar_Rango(int rango)
 
     case 0:
       lcd.setCursor(10, 0);
-      lcd.print("Rango");
+      lcd.print(F("Rango"));
       lcd.setCursor(15, 0);
       lcd.print(Rango_num[rango]);
 
       if(rango%2==0)
       {
         lcd.setCursor(0, 1);
-        lcd.print("Encendido:");//Rangos pares son encedido
+        lcd.print(F("Encendido:"));//Rangos pares son encedido
       }
       else
       {
         lcd.setCursor(0, 1);
-        lcd.print("Apagado:  ");//Rangos impares son apagado
+        lcd.print(F("Apagado:  "));//Rangos impares son apagado
       }
 
       AuxTime.hora = Leer_Rangos_EEPROM(diadelasemana, rango, HORA);
@@ -749,12 +890,12 @@ void Seleccion_dias(void)
       
       //Deselecciono SABADO
       lcd.setCursor(14, 1);
-      lcd.print("S");
+      lcd.print(F("S"));
       //Deseleccionar_dias(diadelasemana);
 
       //Deselecciono LUNES
       lcd.setCursor(2, 1);
-      lcd.print("L");
+      lcd.print(F("L"));
     break;
     
     case LUNES:
@@ -764,11 +905,11 @@ void Seleccion_dias(void)
     
       //Deselecciono DOMINGO
       lcd.setCursor(0, 1);
-      lcd.print("D");
+      lcd.print(F("D"));
 
       //Deselecciono MARTES
       lcd.setCursor(4, 1);
-      lcd.print("Ma");
+      lcd.print(F("Ma"));
     break;
     
     case MARTES:
@@ -779,11 +920,11 @@ void Seleccion_dias(void)
     
       //Deselecciono LUNES
       lcd.setCursor(2, 1);
-      lcd.print("L");
+      lcd.print(F("L"));
 
       //Deselecciono MIERCOLES
       lcd.setCursor(7, 1);
-      lcd.print("Mi");
+      lcd.print(F("Mi"));
     break;
     
     case MIERCOLES:
@@ -794,11 +935,11 @@ void Seleccion_dias(void)
     
       //Deselecciono MARTES
       lcd.setCursor(4, 1);
-      lcd.print("Ma");
+      lcd.print(F("Ma"));
 
       //Deselecciono JUEVES
       lcd.setCursor(10, 1);
-      lcd.print("J");
+      lcd.print(F("J"));
     break;
     
     case JUEVES:
@@ -808,11 +949,11 @@ void Seleccion_dias(void)
     
       //Deselecciono MIERCOLES
       lcd.setCursor(7, 1);
-      lcd.print("Mi");
+      lcd.print(F("Mi"));
 
       //Deselecciono VIERNES
       lcd.setCursor(12, 1);
-      lcd.print("V");
+      lcd.print(F("V"));
     break;
     
     case VIERNES:
@@ -822,11 +963,11 @@ void Seleccion_dias(void)
     
       //Deselecciono JUEVES
       lcd.setCursor(10, 1);
-      lcd.print("J");
+      lcd.print(F("J"));
 
       //Deselecciono SABADO
       lcd.setCursor(14, 1);
-      lcd.print("S");
+      lcd.print(F("S"));
     break;
     
     case SABADO:
@@ -836,11 +977,11 @@ void Seleccion_dias(void)
     
       //Deselecciono VIERNES
       lcd.setCursor(12, 1);
-      lcd.print("V");
+      lcd.print(F("V"));
 
       //Deselecciono DOMINGO
       lcd.setCursor(0, 1);
-      lcd.print("D");
+      lcd.print(F("D"));
     break;
   }
 }
@@ -868,35 +1009,35 @@ void Menu_Principal(void)
   {
     default: 
       //Distingo si me trae basura
-      lcd.print("?");
+      lcd.print(F("?"));
     break;
 
     case DOMINGO:
-      lcd.print("D");
+      lcd.print(F("D"));
     break;
     
     case LUNES:
-      lcd.print("L");
+      lcd.print(F("L"));
     break;
     
     case MARTES:
-      lcd.print("M");
+      lcd.print(F("M"));
     break;
     
     case MIERCOLES:
-      lcd.print("X");
+      lcd.print(F("X"));
     break;
     
     case JUEVES:
-      lcd.print("J");
+      lcd.print(F("J"));
     break;
     
     case VIERNES:
-      lcd.print("V");
+      lcd.print(F("V"));
     break;
     
     case SABADO:
-      lcd.print("S");
+      lcd.print(F("S"));
     break;
   }
 
@@ -905,9 +1046,9 @@ void Menu_Principal(void)
   lcd.print(BufferAux);
 
   lcd.setCursor(1, 1);
-  lcd.print("Reloj");
+  lcd.print(F("Reloj"));
   lcd.setCursor(10, 1);
-  lcd.print("Config");
+  lcd.print(F("Config"));
 
 
   //Para la primera vez que entra aca
@@ -917,13 +1058,13 @@ void Menu_Principal(void)
     proximo_menu = MENU_AJUSTE_FECHA_HORA;
     lcd.setCursor(0, 1);
     //lcd.write(byte(8));//Flecha señalando Reloj
-    lcd.print(">");
+    lcd.print(F(">"));
   }
 
-  #ifdef DEBUG_SERIE
-    Serial.print("proximo_menu:");
+#ifdef DEBUG_SERIE
+    Serial.print(F("proximo_menu:"));
     Serial.println(proximo_menu);
-  #endif
+#endif
   
   Seleccion_Principal();
 
@@ -951,10 +1092,10 @@ void Seleccion_Principal(void)
 
     case DERECHA:
       lcd.setCursor(0, 1);
-      lcd.print(" ");
+      lcd.print(F(" "));
       lcd.setCursor(9, 1);
       //lcd.write(byte(8));//Flecha señalando Config
-      lcd.print(">");
+      lcd.print(F(">"));
       proximo_menu = MENU_CONFIGURACION;
       delay(250);
     break;
@@ -962,9 +1103,9 @@ void Seleccion_Principal(void)
     case IZQUIERDA:
       lcd.setCursor(0, 1);
       //lcd.write(byte(8));//Flecha señalando Reloj
-      lcd.print(">");
+      lcd.print(F(">"));
       lcd.setCursor(9, 1);
-      lcd.print(" ");
+      lcd.print(F(" "));
       proximo_menu = MENU_AJUSTE_FECHA_HORA;
       delay(250);
     break;
@@ -989,10 +1130,10 @@ void Seleccion_Principal(void)
 void Seleccion_Configuracion(void)
 {
   lcd.setCursor(1, 0);
-  lcd.print("Prog. semanal");
+  lcd.print(F("Prog. semanal"));
   
   lcd.setCursor(1, 1);
-  lcd.print("Feriados");
+  lcd.print(F("Feriados"));
 
   
   //Para la primera vez que entra aca
@@ -1000,9 +1141,9 @@ void Seleccion_Configuracion(void)
   {
     lcd.setCursor(0, 0);
     //lcd.write(byte(8));//Flecha señalando Prog Semanal
-    lcd.print(">");
+    lcd.print(F(">"));
     lcd.setCursor(0, 1);
-    lcd.print(" ");
+    lcd.print(F(" "));
     proximo_menu = MENU_PROGRAMA_SEMANAL;
 
     delay(1000);
@@ -1016,19 +1157,19 @@ void Seleccion_Configuracion(void)
     case IZQUIERDA:
       lcd.setCursor(0, 0);
       //lcd.write(byte(8));//Flecha señalando Prog Semanal
-      lcd.print(">");
+      lcd.print(F(">"));
       lcd.setCursor(0, 1);
-      lcd.print(" ");
+      lcd.print(F(" "));
       proximo_menu = MENU_PROGRAMA_SEMANAL;
       delay(250);
     break;
       
     case DERECHA:
       lcd.setCursor(0, 0);
-      lcd.print(" ");
+      lcd.print(F(" "));
       lcd.setCursor(0, 1);
       //lcd.write(byte(8));//Flecha señalando Feriados
-      lcd.print(">");
+      lcd.print(F(">"));
       proximo_menu = MENU_FERIADOS;
       delay(250);
     break;
@@ -1067,6 +1208,7 @@ void Reloj(void){
 }
 */
 
+#ifdef TIMER_INTERNO
 //******************************************************************************
 // Función:				  ISR_Segundo
 //
@@ -1077,14 +1219,15 @@ void Reloj(void){
 // Valor devuelto:	void
 // 
 //******************************************************************************
-void ISR_Segundo(void){
+/*void ISR_Segundo(void){
 
   ActualTime.seg++;
   
   if(tiempo_sin_pulsar>0)
     tiempo_sin_pulsar--;
 
-}
+}*/
+#endif
 
 //******************************************************************************
 // Función:				  Ajuste_Reloj
@@ -1108,9 +1251,9 @@ void Ajuste_Reloj(void)
 
     case 0:
       lcd.setCursor(0, 0);
-      lcd.print("Seleccione hora ");
+      lcd.print(F("Seleccione hora "));
       lcd.setCursor(0, 1);
-      lcd.print("y fecha actual  ");
+      lcd.print(F("y fecha actual  "));
       delay(3000);
       estado_ajuste++;
     break;
@@ -1119,41 +1262,41 @@ void Ajuste_Reloj(void)
       //Muestro la fecha y hora actual
 
       lcd.setCursor(0, 0);
-      lcd.print("Dia: ");
+      lcd.print(F("Dia: "));
 
       switch(ActualTime.DoW)
       {
         default: 
           //Distingo si me trae basura
-          lcd.print("?? ");
+          lcd.print(F("?? "));
         break;
 
         case DOMINGO:
-          lcd.print("Do ");
+          lcd.print(F("Do "));
         break;
         
         case LUNES:
-          lcd.print("Lu ");
+          lcd.print(F("Lu "));
         break;
         
         case MARTES:
-          lcd.print("Ma ");
+          lcd.print(F("Ma "));
         break;
         
         case MIERCOLES:
-          lcd.print("Mi ");
+          lcd.print(F("Mi "));
         break;
         
         case JUEVES:
-          lcd.print("Ju ");
+          lcd.print(F("Ju "));
         break;
         
         case VIERNES:
-          lcd.print("Vi ");
+          lcd.print(F("Vi "));
         break;
         
         case SABADO:
-          lcd.print("Sa ");
+          lcd.print(F("Sa "));
         break;
       }
 
@@ -1178,35 +1321,35 @@ void Ajuste_Reloj(void)
       {
         default: 
           //Distingo si me trae basura
-          lcd.print("?? ");
+          lcd.print(F("?? "));
         break;
 
         case DOMINGO:
-          lcd.print("Do ");
+          lcd.print(F("Do "));
         break;
         
         case LUNES:
-          lcd.print("Lu ");
+          lcd.print(F("Lu "));
         break;
         
         case MARTES:
-          lcd.print("Ma ");
+          lcd.print(F("Ma "));
         break;
         
         case MIERCOLES:
-          lcd.print("Mi ");
+          lcd.print(F("Mi "));
         break;
         
         case JUEVES:
-          lcd.print("Ju ");
+          lcd.print(F("Ju "));
         break;
         
         case VIERNES:
-          lcd.print("Vi ");
+          lcd.print(F("Vi "));
         break;
         
         case SABADO:
-          lcd.print("Sa ");
+          lcd.print(F("Sa "));
         break;
       }
 
@@ -1260,9 +1403,9 @@ void Ajuste_Reloj(void)
         if(Validar_Fecha(AuxTime.dia,AuxTime.mes)==false)
         {
           lcd.setCursor(0, 0);
-          lcd.print("La fecha elegida");
+          lcd.print(F("La fecha elegida"));
           lcd.setCursor(0, 1);
-          lcd.print("   no existe    ");
+          lcd.print(F("   no existe    "));
           delay(3000);
           estado_ajuste=0;
           estado_menu=MENU_PRINCIPAL;
@@ -1297,9 +1440,9 @@ void Ajuste_Reloj(void)
         if((AuxTime.dia==29)&&(AuxTime.mes==2)&&(AuxTime.anio%4!=0))
         {
           lcd.setCursor(0, 0);
-          lcd.print("La fecha elegida");
+          lcd.print(F("La fecha elegida"));
           lcd.setCursor(0, 1);
-          lcd.print("   no existe    ");
+          lcd.print(F("   no existe    "));
           delay(3000);
           estado_ajuste=0;
           estado_menu=MENU_PRINCIPAL;
@@ -1369,9 +1512,9 @@ void Ajuste_Reloj(void)
     case 8:
   
       lcd.setCursor(0, 0);
-      lcd.print("  Modificacion  ");
+      lcd.print(F("  Modificacion  "));
       lcd.setCursor(0, 1);
-      lcd.print("    exitosa     ");
+      lcd.print(F("    exitosa     "));
       
       //Copio la hora seleccionada en la actual
       AuxTime.seg = 0;
@@ -1409,7 +1552,13 @@ void Ajuste_Reloj(void)
 bool Validar_Fecha(int dia,int mes)
 {
   if(dia>cant_dias_mes[mes-1])
+  {
+#ifdef DEBUG_SERIE
+    Serial.print("cant dias del mes:");
+    Serial.print(cant_dias_mes[mes-1]);
+#endif
     return false;
+  }
   else 
     return true;
 }
@@ -1434,7 +1583,7 @@ void Efecto_Titilar(int col,int fila,int digitos,int delay_ms)
     lcd.setCursor(col,fila);
 
     for(int i=0; i<digitos;i++)
-      lcd.print(" ");
+      lcd.print(F(" "));
 
     delay(delay_ms);
 
@@ -1540,7 +1689,7 @@ void Menu_Feriados(void)
         case ENTER:
           estado_menu_feriados++;
           lcd.setCursor(0, 1);
-          lcd.print(">");
+          lcd.print(F(">"));
           lcd.setCursor(0, 0);
           sprintf(BufferAux,"%02d/%02d",AuxTime.dia,AuxTime.mes);
           lcd.print(BufferAux);
@@ -1555,27 +1704,27 @@ void Menu_Feriados(void)
       lcd.setCursor(6, 0);
       if(verificaFeriado(AuxTime.dia,AuxTime.mes) == true)
       {
-        lcd.print("es feriado");
+        lcd.print(F("es feriado"));
         lcd.setCursor(1, 1);
-        lcd.print("Eliminar");
+        lcd.print(F("Eliminar"));
         feriado = ES_FERIADO;
       }
       else
       {
-        lcd.print("          ");
+        lcd.print(F("          "));
         lcd.setCursor(1, 1);
-        lcd.print("Agregar ");
+        lcd.print(F("Agregar "));
         feriado = NO_ES_FERIADO;
       }
       cursor_feriado=0;
       
       lcd.setCursor(11, 1);
-      lcd.print("Salir");
+      lcd.print(F("Salir"));
 
       //Hago titilar a los números
       Efecto_Titilar(0,0,5,100);
       lcd.setCursor(2, 0);
-      lcd.print("/");
+      lcd.print(F("/"));
 
     break;
 
@@ -1589,17 +1738,17 @@ void Menu_Feriados(void)
         case DERECHA:
           cursor_feriado=1;
           lcd.setCursor(0, 1);
-          lcd.print(" ");
+          lcd.print(F(" "));
           lcd.setCursor(10, 1);
-          lcd.print(">");
+          lcd.print(F(">"));
         break;
           
         case IZQUIERDA:
           cursor_feriado=0;
           lcd.setCursor(0, 1);
-          lcd.print(">");
+          lcd.print(F(">"));
           lcd.setCursor(10, 1);
-          lcd.print(" ");
+          lcd.print(F(" "));
         break;
 
         case ENTER:
@@ -1620,7 +1769,7 @@ void Menu_Feriados(void)
           sprintf(BufferAux,"%02d/%02d se quita  ",AuxTime.dia,AuxTime.mes);
           lcd.print(BufferAux);
           lcd.setCursor(0, 1);
-          lcd.print("de los feriados  ");
+          lcd.print(F("de los feriados  "));
         }
         else
         {
@@ -1628,7 +1777,7 @@ void Menu_Feriados(void)
           sprintf(BufferAux,"%02d/%02d se agrega ",AuxTime.dia,AuxTime.mes);
           lcd.print(BufferAux);
           lcd.setCursor(0, 1);
-          lcd.print("a los feriados   ");
+          lcd.print(F("a los feriados   "));
         }
         delay(3000);
         //Me permite seguir eligiendo feriados
@@ -1672,9 +1821,9 @@ bool verificaFeriado(int dia, int mes)
 
   if(EEPROM.read(daysAccum) == ES_FERIADO) 
   {
-    #ifdef DEBUG_SERIE
-      Serial.print("Feriado detectado\n");
-    #endif
+#ifdef DEBUG_SERIE
+      Serial.print(F("Feriado detectado\n"));
+#endif
     return true;
   }
   else 
@@ -1698,6 +1847,9 @@ void seteaFeriado(int dia, int mes, bool feriado)
 {
   int indexMonthEeprom = mes - 1;
   int daysAccum = 0;
+  char buff_aux[4];
+  //Estructura para el archivo de la uSD
+  File myFile;
 
   for(int i = 0; i < indexMonthEeprom; i++) 
   {
@@ -1706,6 +1858,30 @@ void seteaFeriado(int dia, int mes, bool feriado)
 
   daysAccum += ULTIMA_POSICION_EVENTOS + dia;
   EEPROM.write(daysAccum, feriado);
+
+  //Trato de guardar los feriados si hay uSD
+  //Borro el archivo actual para crear uno nuevo
+  SD.remove("feriados.txt");
+  
+  myFile = SD.open("feriados.txt",FILE_WRITE);
+
+  if(myFile) 
+  {
+    for(int i=PRIMERA_POSICION_FERIADOS; i<=ULTIMA_POSICION_FERIADOS;i++)
+    {
+      if(EEPROM.read(i)==1)
+      {
+        sprintf(buff_aux,"%d,",i);
+        myFile.print(buff_aux);
+#ifdef DEBUG_SERIE
+        Serial.print(buff_aux);
+#endif
+      }
+    }
+
+    myFile.close();
+  }
+  
 }
 
 //******************************************************************************
@@ -1748,6 +1924,7 @@ void configuraInterrupcionRTC (void)
 void isr_TickTock(void) {
   // interrupt signals to loop
   tick = 1;
+
   return;
 }
 
@@ -1759,7 +1936,10 @@ void isr_TickTock(void) {
 //******************************************************************************
 void loop(){
 
+#ifdef DEBUG_SERIE
   char BufferAux[50];
+#endif
+  int min_aux, seg_aux;
 
 	//Reloj();
 
@@ -1793,54 +1973,96 @@ void loop(){
 		case MENU_FERIADOS:
       Menu_Feriados();
 		break;
+
+    case MENU_NUEVOS_FERIADOS:
+      lcd.clear();
+      digitalWrite(Salida_Backlight,0);//se enciende el backlight
+      tiempo_sin_pulsar=TIEMPO_PARA_APAGAR_LCD;
+      lcd.setCursor(0, 0);
+      lcd.print(F("Leyendo memoria"));
+
+      delay(2000);//2seg
+
+      lcd.setCursor(0, 0);
+      lcd.print(F("    Feriados    "));
+      lcd.setCursor(0, 1);
+      lcd.print(F("  actualizados  "));
+
+      delay(4000);//4seg
+
+      modificacion_realizada=1;
+      estado_menu = MENU_PRINCIPAL;
+    break;
 		 
 	}
 
-  if((tick)||(modificacion_realizada))  
+  min_aux=RTC.getMinute();
+  
+  seg_aux=RTC.getSecond();
+
+  //El tick no lo estamos utilizando
+  if(seg_aux != seg_ant)
   {
-    //Aca entra cada un minuto o cuando se haga una modificación en el Reloj o en los Rangos    
-    tick = 0;
-    modificacion_realizada=0;
+    //Aca entra cada 1seg
+    ActualTime.seg++;
 
-    Leer_Fecha_Hora_RTC(ActualTime);
+    //Cada 5 segundos me fijo si metieron una uSD para cargar los feriados
+    if(ActualTime.seg%10==0)
+      leerFeriadosDeSd();
+    
+    if(tiempo_sin_pulsar>0)
+      tiempo_sin_pulsar--;
 
-    //Si cambia el día, leo los rangos permitidos
-    if(ultimo_dia != ActualTime.DoW)
+    if((min_aux != min_ant)||(modificacion_realizada))
     {
-      Cargar_Rangos();
-      ultimo_dia=ActualTime.DoW;
-    }  
+      //Aca entra cada un minuto o cuando se haga una modificación en el Reloj o en los Rangos    
+      modificacion_realizada=0;
 
-    codigo_hora_actual = (ActualTime.hora*4)+(ActualTime.min/15);
+      Leer_Fecha_Hora_RTC(ActualTime);
 
-    if(codigo_hora_actual != codigo_hora_actual_anterior)
-    {
-      #ifdef DEBUG_SERIE
-        sprintf(BufferAux,"Codigo actual: %d\n",codigo_hora_actual);
-        Serial.print(BufferAux);
-      #endif
-      codigo_hora_actual_anterior=codigo_hora_actual;
+      //Si cambia el día, leo los rangos permitidos
+      if(ultimo_dia != ActualTime.DoW)
+      {
+        Cargar_Rangos();
+        ultimo_dia=ActualTime.DoW;
+      }  
+
+      codigo_hora_actual = (ActualTime.hora*4)+(ActualTime.min/15);
+
+      if(codigo_hora_actual != codigo_hora_actual_anterior)
+      {
+#ifdef DEBUG_SERIE
+          sprintf(BufferAux,"Codigo actual: %d\n",codigo_hora_actual);
+          Serial.print(BufferAux);
+#endif
+        codigo_hora_actual_anterior=codigo_hora_actual;
+      }
+
+      //Sólo con esto manejo la salida
+
+      if((((codigo_hora_actual>=Rangos_hoy[INICIO_1])&&(codigo_hora_actual<Rangos_hoy[FIN_1]))||
+          ((codigo_hora_actual>=Rangos_hoy[INICIO_2])&&(codigo_hora_actual<Rangos_hoy[FIN_2]))||
+          ((codigo_hora_actual>=Rangos_hoy[INICIO_3])&&(codigo_hora_actual<Rangos_hoy[FIN_3]))||
+          ((codigo_hora_actual>=Rangos_hoy[INICIO_4])&&(codigo_hora_actual<Rangos_hoy[FIN_4])))&&(!verificaFeriado(ActualTime.dia,ActualTime.mes)))
+      {
+        //Si no es feriado y se encuentra dentro de alguno de los rangos programados, alimento la carga
+        digitalWrite(Salida_Rele,1);
+      }
+      else
+      {
+        //Si se encuentra fuera de los rangos dejo de alimentar la carga
+        digitalWrite(Salida_Rele,0);
+      }
+
+      // Clear Alarm 1 flag
+      RTC.checkIfAlarm(1);
     }
-
-    //Sólo con esto manejo la salida
-
-    if((((codigo_hora_actual>=Rangos_hoy[INICIO_1])&&(codigo_hora_actual<Rangos_hoy[FIN_1]))||
-        ((codigo_hora_actual>=Rangos_hoy[INICIO_2])&&(codigo_hora_actual<Rangos_hoy[FIN_2]))||
-        ((codigo_hora_actual>=Rangos_hoy[INICIO_3])&&(codigo_hora_actual<Rangos_hoy[FIN_3]))||
-        ((codigo_hora_actual>=Rangos_hoy[INICIO_4])&&(codigo_hora_actual<Rangos_hoy[FIN_4])))&&(!verificaFeriado(ActualTime.dia,ActualTime.mes)))
-    {
-      //Si no es feriado y se encuentra dentro de alguno de los rangos programados, alimento la carga
-      digitalWrite(Salida_Rele,1);
-    }
-    else
-    {
-      //Si se encuentra fuera de los rangos dejo de alimentar la carga
-      digitalWrite(Salida_Rele,0);
-    }
-
-    // Clear Alarm 1 flag
-    RTC.checkIfAlarm(1);
   }
+
+  
+  min_ant = min_aux;
+  
+  seg_ant = seg_aux;
 
   //Controlo el backlight del lcd
   if(!tiempo_sin_pulsar)

@@ -1,11 +1,13 @@
 #include <SPI.h>
 #include <SD.h>
+#include <EEPROM.h>
 
 File myFile;
 
 void setup() {
   Serial.begin(9600);
-  leerFeriadosDeSd();
+  Serial.println(EEPROM.read(8));
+ // leerFeriadosDeSd();
 
 }
 
@@ -16,21 +18,60 @@ void loop() {
 void leerFeriadosDeSd() {
   if (!SD.begin(4)) {
     //TO DO: Si falla la inicializacion de la SD indicar.
+    Serial.print("falla inicializacion");
     while (1);
   }
 
   //Abre el archivo de feriados
   myFile = SD.open("feriados.txt");
   if (myFile) {
+    String feriados;
+    String eventos;
+
     while (myFile.available()) {
-      String feriado = myFile.readStringUntil(','); // Lee hasta encontrar ;
-      EEPROM.write(feriado.toInt(), 1);
+      //Feriados
+      feriados = myFile.readStringUntil('|');
+      int feriados_len = feriados.length() + 1;
+      char char_feriados[feriados_len];
+      feriados.toCharArray(char_feriados, feriados_len);
+
+      String feriado = "";
+      for (int i = 0; i < feriados.length(); i++) {
+        if (feriados[i] == ',') {
+          EEPROM.write(feriado.toInt(), 1);
+          feriado = "";
+        } else {
+          feriado += feriados[i];
+        }
+
+      }
+      
+      //Eventos
+      eventos = myFile.readStringUntil('.');
+      int eventos_len = eventos.length() + 1;
+      char char_eventos[eventos_len];
+      eventos.toCharArray(char_eventos, eventos_len);
+
+      String evento = "";
+      for (int i = 0; i < eventos.length(); i++) {
+        if (eventos[i] == ',') {
+          String posicionEnMemoriaEvento = evento.substring(0,2);
+          String valorAGuardarEnPosicion = evento.substring(3);
+          EEPROM.write(posicionEnMemoriaEvento.toInt(), valorAGuardarEnPosicion.toInt());
+          evento = "";
+        } else {
+          evento += eventos[i];
+        }
+
+      }
     }
+
 
     // Cerrar el archivo
     myFile.close();
 
   } else {
+    Serial.println("error leyendo archivo");
     //TO DO: Error leyendo feriados.txt
   }
 }

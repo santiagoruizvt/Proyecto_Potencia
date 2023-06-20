@@ -5,7 +5,6 @@
  */
 package proyecto.potencia;
 
-import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.OptionalInt;
@@ -16,7 +15,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.Map;
 
 /**
  *
@@ -38,8 +36,19 @@ public class ProyectoPotencia {
     private static Mes octubre = new Mes(10, "Octubre");
     private static Mes noviembre = new Mes(11, "Noviembre");
     private static Mes diciembre = new Mes(12, "Diciembre");
-    
-    private static HashMap<Integer,Integer> decoMeses = new HashMap<>();
+
+    private static List<Dia> dias = new ArrayList<>();
+
+    private static Dia lunes = new Dia(0, "Lunes");
+    private static Dia martes = new Dia(1, "Martes");
+    private static Dia miercoles = new Dia(2, "Miercoles");
+    private static Dia jueves = new Dia(3, "Jueves");
+    private static Dia viernes = new Dia(4, "Viernes");
+    private static Dia sabado = new Dia(5, "Sábado");
+    private static Dia domingo = new Dia(6, "Domingo");
+
+    private static HashMap<Integer, Integer> decoMeses = new HashMap<>();
+    private static HashMap<Integer, Integer> decoDias = new HashMap<>();
 
     public static void main(String[] args) {
 
@@ -101,7 +110,7 @@ public class ProyectoPotencia {
         meses.add(octubre);
         meses.add(noviembre);
         meses.add(diciembre);
-        
+
         decoMeses.put(1, 31);
         decoMeses.put(2, 29);
         decoMeses.put(3, 31);
@@ -114,7 +123,22 @@ public class ProyectoPotencia {
         decoMeses.put(10, 31);
         decoMeses.put(11, 30);
         decoMeses.put(12, 31);
-        
+
+        dias.add(lunes);
+        dias.add(martes);
+        dias.add(miercoles);
+        dias.add(jueves);
+        dias.add(viernes);
+        dias.add(sabado);
+        dias.add(domingo);
+
+        decoDias.put(6, 0);
+        decoDias.put(0, 8);
+        decoDias.put(1, 16);
+        decoDias.put(2, 24);
+        decoDias.put(3, 32);
+        decoDias.put(4, 40);
+        decoDias.put(5, 48);
 
         //System.out.println(gson.toJson(meses));
         List<String> lista = new ArrayList<>();
@@ -122,7 +146,11 @@ public class ProyectoPotencia {
         lista.add("Ver Feriados Cargados");
         lista.add("Eliminar todos los feriados");
         lista.add("Eliminar un Feriado");
-        lista.add("Guardar Feriados en SD");
+        lista.add("Cargar Eventos");
+        lista.add("Ver Eventos Cargados");
+        lista.add("Eliminar todos los eventos");
+        lista.add("Eliminar un evento");
+        lista.add("Guardar Feriados en SD y Dias");
         lista.add("Salir");
 
         Scanner scanner = new Scanner(System.in);
@@ -141,22 +169,31 @@ public class ProyectoPotencia {
                     case 0:
                         cargarFeriados(scanner);
                         break;
-
                     case 1:
                         verFeriadosCargados();
                         break;
-
                     case 2:
                         eliminarTodoLosFeriados();
                         break;
-
                     case 3:
                         eliminarUnFeriado(scanner);
                         break;
                     case 4:
-                        guardarCalendarioEnSD(scanner);
+                        cargarEventos(scanner);
                         break;
                     case 5:
+                        verEentosCargados();
+                        break;
+                    case 6:
+                        eliminarTodoLosEventos();
+                        break;
+                    case 7:
+                        eliminarUnEvento(scanner);
+                        break;
+                    case 8:
+                        guardarCalendarioEnSD(scanner);
+                        break;
+                    case 9:
                         System.exit(0);
                 }
 
@@ -216,6 +253,21 @@ public class ProyectoPotencia {
 
     }
 
+    private static void verEentosCargados() {
+        clearScreen();
+        dias.stream().filter((dia) -> (!dia.eventos.isEmpty())).forEachOrdered((dia) -> {
+            System.out.println("[" + dia.name + "]");
+            System.out.println("|");
+            dia.eventos.forEach((evento) -> {
+                System.out.println("|-> Inicio:  " + evento.horaInicio + " Fin: " + evento.horaFin);
+            });
+            System.out.println("");
+        });
+
+        System.out.println("");
+
+    }
+
     private static void eliminarTodoLosFeriados() {
         System.out.print("\033[H\033[2J");
         System.out.flush();
@@ -223,6 +275,18 @@ public class ProyectoPotencia {
             meses.get(i).feriados.clear();
         }
         System.out.println("Se eliminaron todos los feriados.");
+
+        System.out.println("");
+        System.out.println("");
+    }
+
+    private static void eliminarTodoLosEventos() {
+        System.out.print("\033[H\033[2J");
+        System.out.flush();
+        for (int i = 0; i < dias.size(); i++) {
+            dias.get(i).eventos.clear();
+        }
+        System.out.println("Se eliminaron todos los eventos.");
 
         System.out.println("");
         System.out.println("");
@@ -253,6 +317,113 @@ public class ProyectoPotencia {
 
     }
 
+    private static void eliminarUnEvento(Scanner scanner) {
+        clearScreen();
+        System.out.println("Seleccione el dia del evento que desea eliminar: ");
+
+        System.out.println("0: Lunes");
+        System.out.println("1: Martes");
+        System.out.println("2: Miercoles");
+        System.out.println("3: Jueves");
+        System.out.println("4: Viernes");
+        System.out.println("5: Sabado");
+        System.out.println("6: Domingo");
+
+        String diaDelEvento = scanner.next();
+        int diaDelEventoInt = Integer.parseInt(diaDelEvento);
+
+        //Busco el dia en el array
+        Dia diabuscado = dias.stream()
+                .filter(d -> d.indice == diaDelEventoInt)
+                .collect(Collectors.toList()).get(0);
+
+        //Obtengo el indice del mes del array
+        OptionalInt indexDia = IntStream.range(0, dias.size())
+                .filter(i -> diaDelEventoInt == dias.get(i).indice)
+                .findFirst();
+
+        dias.get(indexDia.getAsInt()).eventos.remove(indexDia.getAsInt());
+
+        System.out.println("Se eliminó el Evento del dia " + diabuscado.name);
+        System.out.println("");
+        System.out.println("");
+
+    }
+
+    private static void cargarEventos(Scanner scanner) {
+        while (true) {
+            clearScreen();
+            System.out.println("Seleccione un día de la semana: ");
+
+            System.out.println("0: Lunes");
+            System.out.println("1: Martes");
+            System.out.println("2: Miercoles");
+            System.out.println("3: Jueves");
+            System.out.println("4: Viernes");
+            System.out.println("5: Sabado");
+            System.out.println("6: Domingo");
+
+            String diaDelEvento = scanner.next();
+            int diaDelEventoInt = Integer.parseInt(diaDelEvento);
+
+            //Busco el dia en el array
+            Dia diabuscado = dias.stream()
+                    .filter(d -> d.indice == diaDelEventoInt)
+                    .collect(Collectors.toList()).get(0);
+
+            int eventoInt = -1;
+            if (diabuscado.eventos.size() == 4) {
+                System.out.println("Los Eventos de este día estan completos, por favor seleccione un evento a sobrescribir:");
+
+                System.out.println("0: Evento 1");
+                System.out.println("1: Evento 2");
+                System.out.println("2: Evento 3");
+                System.out.println("3: Evento 4");
+
+                String eventoSeleccionado = scanner.next();
+                eventoInt = Integer.parseInt(eventoSeleccionado);
+
+            }
+
+            System.out.println("Seleccione el horario inicial del evento en formato hh:mm");
+            System.out.println("(Los minutos deben ser múltiplo de 15)");
+
+            String horarioInicial = scanner.next();
+
+            System.out.println("Seleccione el horario final del evento en formato hh:mm");
+            System.out.println("(Los minutos deben ser múltiplo de 15)");
+
+            String horarioFinal = scanner.next();
+
+            Evento evento = new Evento(horarioInicial, horarioFinal);
+
+            if (eventoInt < 0) {
+                diabuscado.eventos.add(evento);
+            } else {
+                diabuscado.eventos.get(eventoInt).horaInicio = evento.horaInicio;
+                diabuscado.eventos.get(eventoInt).horaFin = evento.horaFin;
+                diabuscado.eventos.get(eventoInt).valorCalculadoInicio = evento.valorCalculadoInicio;
+                diabuscado.eventos.get(eventoInt).valorCalculadoFinal = evento.valorCalculadoFinal;
+            }
+
+            //Obtengo el indice del mes del array
+            OptionalInt indexDias = IntStream.range(0, dias.size())
+                    .filter(i -> diaDelEventoInt == dias.get(i).indice)
+                    .findFirst();
+
+            dias.set(indexDias.getAsInt(), diabuscado);
+
+            System.out.println("Se agregó el evento al día " + diabuscado.name + " [Hora Inicial: " + horarioInicial + " | Hora Final: " + horarioFinal + "]");
+            System.out.println("Hora Inicial Calculada: " + evento.valorCalculadoInicio);
+            System.out.println("Hora Final Calculada: " + evento.valorCalculadoFinal);
+            System.out.println("¿Desea agregar otro evento? (s/n)");
+            String agregarOtroferiado = scanner.next();
+            if (!agregarOtroferiado.equalsIgnoreCase("s")) {
+                break;
+            }
+        }
+    }
+
     private static void guardarCalendarioEnSD(Scanner scanner) {
         clearScreen();
 
@@ -274,8 +445,6 @@ public class ProyectoPotencia {
         /*
         GUARDA EN SD
          */
-        Gson gson = new Gson();
-
         String nombreArchivo = "feriados.txt";
 
         // Tarjeta SD accesible
@@ -290,7 +459,7 @@ public class ProyectoPotencia {
         try {
             String fileToSd = "";
             for (Mes mes : meses) {
-                if(!mes.feriados.isEmpty()) {
+                if (!mes.feriados.isEmpty()) {
                     for (Integer feriado : mes.feriados) {
                         Integer posicionEnMemoria = 55 + feriado;
                         for (int i = 1; i < mes.indice; i++) {
@@ -301,11 +470,27 @@ public class ProyectoPotencia {
                 }
             }
             
+            fileToSd = fileToSd.substring(0, fileToSd.length() - 1);
+            fileToSd += "|";
+            //Dias
+            for (Dia dia : dias) {
+                if (!dia.eventos.isEmpty()) {
+                    int posicionInicial = decoDias.get(dia.indice);
+                    for (int i = 0; i < dia.eventos.size(); i++) {
+                        fileToSd += formatNumber(posicionInicial) +":"+dia.eventos.get(i).valorCalculadoInicio +",";
+                        posicionInicial = posicionInicial + 1;
+                        fileToSd += formatNumber(posicionInicial) +":"+dia.eventos.get(i).valorCalculadoFinal +",";
+                        posicionInicial = posicionInicial + 1;
+                    }
+                }
+            }
+            
+            fileToSd = fileToSd.substring(0, fileToSd.length() - 1);
+
             // Escribir el contenido en el archivo
             FileWriter escritor = new FileWriter(archivo);
             escritor.write(fileToSd);
             escritor.close();
-            
 
             System.out.println("Los feriados se guardaron correctamente en la tarjeta SD.");
         } catch (IOException e) {
@@ -318,6 +503,14 @@ public class ProyectoPotencia {
     private static void clearScreen() {
         System.out.print("\033[H\033[2J");
         System.out.flush();
+    }
+    
+    private static String formatNumber(int valor) {
+        if(valor < 10) {
+            return "0"+valor;
+        } else {
+            return ""+valor;
+        }
     }
 
 }

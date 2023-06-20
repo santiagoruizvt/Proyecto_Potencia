@@ -5,9 +5,7 @@
 File myFile;
 
 void setup() {
-  Serial.begin(9600);
-  Serial.println(EEPROM.read(8));
- // leerFeriadosDeSd();
+  leerFeriadosDeSd();
 
 }
 
@@ -18,7 +16,6 @@ void loop() {
 void leerFeriadosDeSd() {
   if (!SD.begin(4)) {
     //TO DO: Si falla la inicializacion de la SD indicar.
-    Serial.print("falla inicializacion");
     while (1);
   }
 
@@ -71,7 +68,6 @@ void leerFeriadosDeSd() {
     myFile.close();
 
   } else {
-    Serial.println("error leyendo archivo");
     //TO DO: Error leyendo feriados.txt
   }
 }

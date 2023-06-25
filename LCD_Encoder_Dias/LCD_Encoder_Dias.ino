@@ -20,7 +20,7 @@
 #define MENU_CONFIGURACION      2
 #define MENU_PROGRAMA_SEMANAL   3
 #define MENU_FERIADOS           4
-#define MENU_NUEVOS_FERIADOS    5
+#define MENU_CAMBIOS_SD         5
 
 //Dias de la semana
 #define LUNES     1
@@ -46,6 +46,8 @@
 #define ULTIMA_POSICION_EVENTOS   PRIMERA_POSICION_EVENTOS+55
 #define PRIMERA_POSICION_FERIADOS ULTIMA_POSICION_EVENTOS+1
 #define ULTIMA_POSICION_FERIADOS  PRIMERA_POSICION_FERIADOS+365
+
+#define MAX_VALOR_HORARIOS  95 //correspondiente a las 23:45
 
 #define CANT_RANGOS 4
 
@@ -335,7 +337,7 @@ void leerFeriadosDeSd(void)
   bool hubo_cambio=0;
 
 #ifdef DEBUG_SERIE
-  Serial.print(F("Inicializando tarjeta..."));
+  Serial.print(F("Inicializando tarjeta...\n"));
   delay(50);
 #endif
 
@@ -359,6 +361,10 @@ void leerFeriadosDeSd(void)
 
       if(myFile) 
       {
+        String feriados;
+        String eventos;
+        char caracter;
+
         estado_uSD = 1;
 
 #ifdef DEBUG_SERIE
@@ -366,50 +372,159 @@ void leerFeriadosDeSd(void)
         delay(50);
 #endif
 
-        while (myFile.available()) 
-        {
-          String feriado = myFile.readStringUntil(','); // Lee hasta encontrar ,
+//      while (myFile.available()) 
+//      {
+          //Feriados
+          feriados = myFile.readStringUntil('|');
+          
+          int feriados_len = feriados.length() + 1;
+          String evento = "";
+          int eventos_len;
 
-          if((feriado.toInt()>=PRIMERA_POSICION_FERIADOS)&&(feriado.toInt()<=ULTIMA_POSICION_FERIADOS))
+          char char_feriados[feriados_len];
+          feriados.toCharArray(char_feriados, feriados_len);
+
+          String feriado = "";
+
+          for (int i = 0; i < feriados.length(); i++) 
           {
-            if(EEPROM.read(feriado.toInt())!=1)
+            if (feriados[i] == ',') 
             {
-              EEPROM.write(feriado.toInt(), 1);
-              hubo_cambio=1;
-            }
+              if((feriado.toInt()>=PRIMERA_POSICION_FERIADOS)&&(feriado.toInt()<=ULTIMA_POSICION_FERIADOS))
+              {
+                if(EEPROM.read(feriado.toInt())!=1)
+                {
+                  EEPROM.write(feriado.toInt(), 1);
+                  hubo_cambio=1;
 #ifdef DEBUG_SERIE
-            sprintf(BufferAux,"feriado: %d \n",feriado.toInt());
-            Serial.print(BufferAux);
+                  Serial.print(F("Lo guardo!"));
 #endif
-            //Borro todas las posiciones que no estén en la microSD
-            for(int i=feriado_anterior;i<feriado.toInt();i++)
+                }
+#ifdef DEBUG_SERIE
+                sprintf(BufferAux,"feriado: %d \n",feriado.toInt());
+                Serial.print(BufferAux);
+#endif
+                //Borro todas las posiciones que no estén en la microSD
+                for(int j=feriado_anterior;j<feriado.toInt();j++)
+                {
+                  if(EEPROM.read(j)!=0)
+                  {
+                    EEPROM.write(j, 0);
+                    hubo_cambio=1;
+#ifdef DEBUG_SERIE
+                    Serial.print(F("Lo borro!"));
+#endif
+                  }
+                }
+                
+                feriado_anterior = feriado.toInt()+1;
+              }
+              feriado = "";
+            } 
+            else 
+            {
+              feriado += feriados[i];
+              
+#ifdef DEBUG_SERIE
+              Serial.print(feriado);
+              Serial.print(F("\n"));
+#endif
+            }
+          }
+        
+
+          if((feriado_anterior>PRIMERA_POSICION_FERIADOS)&&(feriado_anterior<=ULTIMA_POSICION_FERIADOS))
+          {          
+            //Borro todas las posiciones que faltan de la uSD
+            for(int i=feriado_anterior;i<=ULTIMA_POSICION_FERIADOS;i++)
             {
               if(EEPROM.read(i)!=0)
-              {
                 EEPROM.write(i, 0);
-                hubo_cambio=1;
+            }
+          }
+
+        while (myFile.available()) 
+        {
+          eventos = "";
+          evento = "";
+          //Eventos
+          eventos = myFile.readStringUntil(',');
+          
+          //if (eventos[i] != '.') 
+          if (eventos[0] != '.') 
+          {
+            eventos += ',';
+            eventos_len = eventos.length() + 1;
+
+#ifdef DEBUG_SERIE
+            Serial.print(eventos);
+
+            delay(100);
+
+            sprintf(BufferAux,"\n eventos_len: %d\n",eventos_len);
+            Serial.print(BufferAux);
+#endif
+
+            //char char_eventos[eventos_len];
+            //eventos.toCharArray(char_eventos, eventos_len);
+
+
+            for (int i = 0; i < eventos.length(); i++) 
+            {
+
+#ifdef DEBUG_SERIE
+              sprintf(BufferAux,"eventos[%d]: %c\n",i,eventos[i]);
+              Serial.print(BufferAux);
+#endif
+              if (eventos[i] != ',') 
+              {
+                //Mientras no llegue la coma, armo el string
+                evento += eventos[i];
+                
+#ifdef DEBUG_SERIE
+                Serial.print(evento);
+                Serial.print(F("\n"));
+#endif
+              }
+              else
+              {
+                String posicionEnMemoriaEvento = evento.substring(0,2); //Agarro la posicion (antes del ':')
+                String valorAGuardarEnPosicion = evento.substring(3,5);   //Agarro el codigo a guardar (despues del ':')
+
+#ifdef DEBUG_SERIE
+                sprintf(BufferAux,"posicionEnMemoriaEvento: %d\n",posicionEnMemoriaEvento.toInt());
+                Serial.print(BufferAux);
+                sprintf(BufferAux,"valorAGuardarEnPosicion: %d\n",valorAGuardarEnPosicion.toInt());
+                Serial.print(BufferAux);
+#endif
+
+                if((posicionEnMemoriaEvento.toInt()>=PRIMERA_POSICION_EVENTOS)&&(posicionEnMemoriaEvento.toInt()<=ULTIMA_POSICION_EVENTOS)&&(valorAGuardarEnPosicion.toInt()<= MAX_VALOR_HORARIOS))
+                {
+                  //Si es valido, me fijo si es diferente a lo que ya está guardado
+                  if(EEPROM.read(posicionEnMemoriaEvento.toInt())!=valorAGuardarEnPosicion.toInt())
+                  {
+                    //Si es diferente, lo guardo
+                    EEPROM.write(posicionEnMemoriaEvento.toInt(), valorAGuardarEnPosicion.toInt());
+                    hubo_cambio = 1;
+                    
+#ifdef DEBUG_SERIE
+                    Serial.print(F("Lo guardo!"));
+#endif
+                  }
+                }  
+                
+                evento = "";
               }
             }
-            
-            feriado_anterior = feriado.toInt()+1;
-          }
-        }
-
-        if((feriado_anterior>PRIMERA_POSICION_FERIADOS)&&(feriado_anterior<=ULTIMA_POSICION_FERIADOS))
-        {          
-          //Borro todas las posiciones que faltan de la uSD
-          for(int i=feriado_anterior;i<=ULTIMA_POSICION_FERIADOS;i++)
-          {
-            if(EEPROM.read(i)!=0)
-              EEPROM.write(i, 0);
           }
         }
 
         if(hubo_cambio)
-          estado_menu = MENU_NUEVOS_FERIADOS;
+          estado_menu = MENU_CAMBIOS_SD;
 
         // Cerrar el archivo
         myFile.close();
+
       }
       else 
       {
@@ -1061,10 +1176,12 @@ void Menu_Principal(void)
     lcd.print(F(">"));
   }
 
+/*
 #ifdef DEBUG_SERIE
     Serial.print(F("proximo_menu:"));
     Serial.println(proximo_menu);
 #endif
+*/
   
   Seleccion_Principal();
 
@@ -1858,7 +1975,7 @@ void seteaFeriado(int dia, int mes, bool feriado)
 
   daysAccum += ULTIMA_POSICION_EVENTOS + dia;
   EEPROM.write(daysAccum, feriado);
-
+/*
   //Trato de guardar los feriados si hay uSD
   //Borro el archivo actual para crear uno nuevo
   SD.remove("feriados.txt");
@@ -1881,7 +1998,7 @@ void seteaFeriado(int dia, int mes, bool feriado)
 
     myFile.close();
   }
-  
+*/ //Lo comento hasta hacer lo mismo con los eventos
 }
 
 //******************************************************************************
@@ -1974,7 +2091,7 @@ void loop(){
       Menu_Feriados();
 		break;
 
-    case MENU_NUEVOS_FERIADOS:
+    case MENU_CAMBIOS_SD:
       lcd.clear();
       digitalWrite(Salida_Backlight,0);//se enciende el backlight
       tiempo_sin_pulsar=TIEMPO_PARA_APAGAR_LCD;
@@ -1984,9 +2101,9 @@ void loop(){
       delay(2000);//2seg
 
       lcd.setCursor(0, 0);
-      lcd.print(F("    Feriados    "));
+      lcd.print(F(" Modificaciones "));
       lcd.setCursor(0, 1);
-      lcd.print(F("  actualizados  "));
+      lcd.print(F("   realizadas   "));
 
       delay(4000);//4seg
 

@@ -37,8 +37,7 @@ void leerFeriadosDeSd() {
       String feriado = "";
       for (int i = 0; i < feriados.length(); i++) {
         if (feriados[i] == ',') {
-          Serial.println(feriado);
-          //EEPROM.write(feriado.toInt(), 1);
+          EEPROM.write(feriado.toInt(), 1);
           feriado = "";
         } else {
           feriado += feriados[i];

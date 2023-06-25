@@ -7,6 +7,7 @@ File myFile;
 void setup() {
   leerFeriadosDeSd();
 
+
 }
 
 void loop() {
@@ -26,6 +27,7 @@ void leerFeriadosDeSd() {
     String eventos;
 
     while (myFile.available()) {
+
       //Feriados
       feriados = myFile.readStringUntil('|');
       int feriados_len = feriados.length() + 1;
@@ -35,29 +37,40 @@ void leerFeriadosDeSd() {
       String feriado = "";
       for (int i = 0; i < feriados.length(); i++) {
         if (feriados[i] == ',') {
-          EEPROM.write(feriado.toInt(), 1);
+          Serial.println(feriado);
+          //EEPROM.write(feriado.toInt(), 1);
           feriado = "";
         } else {
           feriado += feriados[i];
         }
 
       }
-      
+
       //Eventos
       eventos = myFile.readStringUntil('.');
       int eventos_len = eventos.length() + 1;
       char char_eventos[eventos_len];
       eventos.toCharArray(char_eventos, eventos_len);
 
-      String evento = "";
+      char evento[6];
+      int current = 0;
       for (int i = 0; i < eventos.length(); i++) {
         if (eventos[i] == ',') {
-          String posicionEnMemoriaEvento = evento.substring(0,2);
-          String valorAGuardarEnPosicion = evento.substring(3);
-          EEPROM.write(posicionEnMemoriaEvento.toInt(), valorAGuardarEnPosicion.toInt());
-          evento = "";
+          char posicionEnMemoriaEvento[3];
+          char valorAGuardarEnPosicion[3];
+
+          posicionEnMemoriaEvento[0] = evento[0];
+          posicionEnMemoriaEvento[1] = evento[1];
+          posicionEnMemoriaEvento[2] = '\0';
+          valorAGuardarEnPosicion[0] = evento[3];
+          valorAGuardarEnPosicion[1] = evento[4];
+          valorAGuardarEnPosicion[2] = '\0';
+
+          EEPROM.write(atoi(posicionEnMemoriaEvento), atoi(valorAGuardarEnPosicion));
+          current = 0;
         } else {
-          evento += eventos[i];
+          evento[current] = eventos[i];
+          current++;
         }
 
       }

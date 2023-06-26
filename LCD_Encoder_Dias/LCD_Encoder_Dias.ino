@@ -363,7 +363,6 @@ void leerFeriadosDeSd(void)
       {
         String feriados;
         String eventos;
-        char caracter;
 
         estado_uSD = 1;
 
@@ -775,11 +774,15 @@ void Programacion_Semanal(void)
     break;
 
     case 4:
+      //Trato de guardar los cambios si hay uSD
+      Guardar_Cambios_uSD();
+
       lcd.setCursor(0, 0);
       lcd.print(F("Config guardada "));
       lcd.setCursor(0, 1);
       lcd.print(F("   con exito    "));
       delay(3000);
+      
       estado_menu=MENU_PRINCIPAL;
       estado_prog_sem=0;
       diadelasemana=0;
@@ -1965,8 +1968,6 @@ void seteaFeriado(int dia, int mes, bool feriado)
   int indexMonthEeprom = mes - 1;
   int daysAccum = 0;
   char buff_aux[4];
-  //Estructura para el archivo de la uSD
-  File myFile;
 
   for(int i = 0; i < indexMonthEeprom; i++) 
   {
@@ -1975,8 +1976,33 @@ void seteaFeriado(int dia, int mes, bool feriado)
 
   daysAccum += ULTIMA_POSICION_EVENTOS + dia;
   EEPROM.write(daysAccum, feriado);
-/*
-  //Trato de guardar los feriados si hay uSD
+
+  //Trato de guardar los cambios si hay uSD
+  Guardar_Cambios_uSD();
+
+}
+
+
+//******************************************************************************
+// Función:				  Guardar_Cambios_uSD
+//
+// Descripción:		  Si está colocada la microSD, guarda las modificaciones
+//                  ya sea de feriados o de eventos
+//
+// Parámetros:			void
+//
+// Valor devuelto:	void
+// 
+//******************************************************************************
+void Guardar_Cambios_uSD(void)
+{
+  char buff_feriado[4];
+  char buff_eventos[6];
+  int valor;
+  //Estructura para el archivo de la uSD
+  File myFile;
+
+
   //Borro el archivo actual para crear uno nuevo
   SD.remove("feriados.txt");
   
@@ -1984,23 +2010,47 @@ void seteaFeriado(int dia, int mes, bool feriado)
 
   if(myFile) 
   {
+    //Guardo los feriados
     for(int i=PRIMERA_POSICION_FERIADOS; i<=ULTIMA_POSICION_FERIADOS;i++)
     {
       if(EEPROM.read(i)==1)
       {
-        sprintf(buff_aux,"%d,",i);
-        myFile.print(buff_aux);
+        sprintf(buff_feriado,"%d,",i);
+        myFile.print(buff_feriado);
 #ifdef DEBUG_SERIE
-        Serial.print(buff_aux);
+        Serial.print(buff_feriado);
 #endif
       }
     }
+    
+    //Ya terminé con los feriados
+    myFile.print('|');
+    
+    //Guardo los eventos
+    for(int i=PRIMERA_POSICION_EVENTOS; i<=ULTIMA_POSICION_EVENTOS;i++)
+    {
+      //Guardo posicion:valor, asegurandome que tanto posicion como valor ocupen 2 dígitos
+      valor = EEPROM.read(i);
+      
+      if(valor > MAX_VALOR_HORARIOS)
+        valor=0;
+
+      sprintf(buff_eventos, "%02d:%02d,", i, valor);
+
+      myFile.print(buff_eventos);
+#ifdef DEBUG_SERIE
+      Serial.print(buff_eventos);
+#endif
+      
+    }
+    
+    //Ya terminé con los eventos
+    myFile.print('.');
 
     myFile.close();
   }
-*/ //Lo comento hasta hacer lo mismo con los eventos
+  
 }
-
 //******************************************************************************
 // Función:				  configuraInterrupcionRTC
 //

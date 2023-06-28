@@ -39,16 +39,17 @@ public class ProyectoPotencia {
 
     private static List<Dia> dias = new ArrayList<>();
 
-    private static Dia lunes = new Dia(0, "Lunes");
-    private static Dia martes = new Dia(1, "Martes");
-    private static Dia miercoles = new Dia(2, "Miercoles");
-    private static Dia jueves = new Dia(3, "Jueves");
-    private static Dia viernes = new Dia(4, "Viernes");
-    private static Dia sabado = new Dia(5, "Sábado");
-    private static Dia domingo = new Dia(6, "Domingo");
+    private static Dia lunes = new Dia(1, "Lunes");
+    private static Dia martes = new Dia(2, "Martes");
+    private static Dia miercoles = new Dia(3, "Miercoles");
+    private static Dia jueves = new Dia(4, "Jueves");
+    private static Dia viernes = new Dia(5, "Viernes");
+    private static Dia sabado = new Dia(6, "Sábado");
+    private static Dia domingo = new Dia(0, "Domingo");
 
     private static HashMap<Integer, Integer> decoMeses = new HashMap<>();
     private static HashMap<Integer, Integer> decoDias = new HashMap<>();
+    private static HashMap<Integer, String> decoEventosHora = new HashMap<>();
 
     public static void main(String[] args) {
 
@@ -132,13 +133,110 @@ public class ProyectoPotencia {
         dias.add(sabado);
         dias.add(domingo);
 
-        decoDias.put(6, 0);
-        decoDias.put(0, 8);
-        decoDias.put(1, 16);
-        decoDias.put(2, 24);
-        decoDias.put(3, 32);
-        decoDias.put(4, 40);
-        decoDias.put(5, 48);
+        decoDias.put(0, 0);
+        decoDias.put(1, 8);
+        decoDias.put(2, 16);
+        decoDias.put(3, 24);
+        decoDias.put(4, 32);
+        decoDias.put(5, 40);
+        decoDias.put(6, 48);
+
+        decoEventosHora.put(0, "00:00");
+        decoEventosHora.put(1, "00:15");
+        decoEventosHora.put(2, "00:30");
+        decoEventosHora.put(3, "00:45");
+        decoEventosHora.put(4, "01:00");
+        decoEventosHora.put(5, "01:15");
+        decoEventosHora.put(6, "01:30");
+        decoEventosHora.put(7, "01:45");
+        decoEventosHora.put(8, "02:00");
+        decoEventosHora.put(9, "02:15");
+        decoEventosHora.put(10, "02:30");
+        decoEventosHora.put(11, "02:45");
+        decoEventosHora.put(12, "03:00");
+        decoEventosHora.put(13, "03:15");
+        decoEventosHora.put(14, "03:30");
+        decoEventosHora.put(15, "03:45");
+        decoEventosHora.put(16, "04:00");
+        decoEventosHora.put(17, "04:15");
+        decoEventosHora.put(18, "04:30");
+        decoEventosHora.put(19, "04:45");
+        decoEventosHora.put(20, "05:00");
+        decoEventosHora.put(21, "05:15");
+        decoEventosHora.put(22, "05:30");
+        decoEventosHora.put(23, "05:45");
+        decoEventosHora.put(24, "06:00");
+        decoEventosHora.put(25, "06:15");
+        decoEventosHora.put(26, "06:30");
+        decoEventosHora.put(27, "06:45");
+        decoEventosHora.put(28, "07:00");
+        decoEventosHora.put(29, "07:15");
+        decoEventosHora.put(30, "07:30");
+        decoEventosHora.put(31, "07:45");
+        decoEventosHora.put(32, "08:00");
+        decoEventosHora.put(33, "08:15");
+        decoEventosHora.put(34, "08:30");
+        decoEventosHora.put(35, "08:45");
+        decoEventosHora.put(36, "09:00");
+        decoEventosHora.put(37, "09:15");
+        decoEventosHora.put(38, "09:30");
+        decoEventosHora.put(39, "09:45");
+        decoEventosHora.put(40, "10:00");
+        decoEventosHora.put(41, "10:15");
+        decoEventosHora.put(42, "10:30");
+        decoEventosHora.put(43, "10:45");
+        decoEventosHora.put(44, "11:00");
+        decoEventosHora.put(45, "11:15");
+        decoEventosHora.put(46, "11:30");
+        decoEventosHora.put(47, "11:45");
+        decoEventosHora.put(48, "12:00");
+        decoEventosHora.put(49, "12:15");
+        decoEventosHora.put(50, "12:30");
+        decoEventosHora.put(51, "12:45");
+        decoEventosHora.put(52, "13:00");
+        decoEventosHora.put(53, "13:15");
+        decoEventosHora.put(54, "13:30");
+        decoEventosHora.put(55, "13:45");
+        decoEventosHora.put(56, "14:00");
+        decoEventosHora.put(57, "14:15");
+        decoEventosHora.put(58, "14:30");
+        decoEventosHora.put(59, "14:45");
+        decoEventosHora.put(60, "15:00");
+        decoEventosHora.put(61, "15:15");
+        decoEventosHora.put(62, "15:30");
+        decoEventosHora.put(63, "15:45");
+        decoEventosHora.put(64, "16:00");
+        decoEventosHora.put(65, "16:15");
+        decoEventosHora.put(66, "16:30");
+        decoEventosHora.put(67, "16:45");
+        decoEventosHora.put(68, "17:00");
+        decoEventosHora.put(69, "17:15");
+        decoEventosHora.put(70, "17:30");
+        decoEventosHora.put(71, "17:45");
+        decoEventosHora.put(72, "18:00");
+        decoEventosHora.put(73, "18:15");
+        decoEventosHora.put(74, "18:30");
+        decoEventosHora.put(75, "18:45");
+        decoEventosHora.put(76, "19:00");
+        decoEventosHora.put(77, "19:15");
+        decoEventosHora.put(78, "19:30");
+        decoEventosHora.put(79, "19:45");
+        decoEventosHora.put(80, "20:00");
+        decoEventosHora.put(81, "20:15");
+        decoEventosHora.put(82, "20:30");
+        decoEventosHora.put(83, "20:45");
+        decoEventosHora.put(84, "21:00");
+        decoEventosHora.put(85, "21:15");
+        decoEventosHora.put(86, "21:30");
+        decoEventosHora.put(87, "21:45");
+        decoEventosHora.put(88, "22:00");
+        decoEventosHora.put(89, "22:15");
+        decoEventosHora.put(90, "22:30");
+        decoEventosHora.put(91, "22:45");
+        decoEventosHora.put(92, "23:00");
+        decoEventosHora.put(93, "23:15");
+        decoEventosHora.put(94, "23:30");
+        decoEventosHora.put(95, "23:45");
 
         //System.out.println(gson.toJson(meses));
         List<String> lista = new ArrayList<>();
@@ -151,6 +249,7 @@ public class ProyectoPotencia {
         lista.add("Eliminar todos los eventos");
         lista.add("Eliminar un evento");
         lista.add("Guardar Feriados en SD y Dias");
+        lista.add("Leer SD");
         lista.add("Salir");
 
         Scanner scanner = new Scanner(System.in);
@@ -194,6 +293,9 @@ public class ProyectoPotencia {
                         guardarCalendarioEnSD(scanner);
                         break;
                     case 9:
+                        leersd(scanner);
+                        break;
+                    case 10:
                         System.exit(0);
                 }
 
@@ -355,13 +457,13 @@ public class ProyectoPotencia {
             clearScreen();
             System.out.println("Seleccione un día de la semana: ");
 
-            System.out.println("0: Lunes");
-            System.out.println("1: Martes");
-            System.out.println("2: Miercoles");
-            System.out.println("3: Jueves");
-            System.out.println("4: Viernes");
-            System.out.println("5: Sabado");
-            System.out.println("6: Domingo");
+            System.out.println("0: Domingo");
+            System.out.println("1: Lunes");
+            System.out.println("2: Martes");
+            System.out.println("3: Miercoles");
+            System.out.println("4: Jueves");
+            System.out.println("5: Viernes");
+            System.out.println("6: Sabado");
 
             String diaDelEvento = scanner.next();
             int diaDelEventoInt = Integer.parseInt(diaDelEvento);
@@ -424,6 +526,119 @@ public class ProyectoPotencia {
         }
     }
 
+    private static void leersd(Scanner scanner) {
+        clearScreen();
+
+        List<String> lista = new ArrayList<>();
+
+        for (File sysDrive : File.listRoots()) {
+            lista.add(sysDrive.toString());
+        }
+
+        System.out.println("Seleccione la unidad donde se encuentra la SD (ingresa el índice):");
+
+        for (int i = 0; i < lista.size(); i++) {
+            System.out.println(i + ": " + lista.get(i));
+        }
+
+        int indiceSeleccionado = scanner.nextInt();
+        String elementoSeleccionado = lista.get(indiceSeleccionado);
+
+        /*
+        GUARDA EN SD
+         */
+        String nombreArchivo = "feriados.txt";
+
+        // Tarjeta SD accesible
+        File directorioSD = new File(elementoSeleccionado);
+        if (!directorioSD.exists() || !directorioSD.isDirectory()) {
+            System.out.println("La tarjeta SD no está disponible.");
+            return;
+        }
+
+        int mes;
+        int dia;
+
+        try {
+
+            File archivo = new File(directorioSD, nombreArchivo);
+            Scanner myReader = new Scanner(archivo);
+            String data = "";
+            while (myReader.hasNextLine()) {
+                data = myReader.nextLine();
+            }
+
+            myReader.close();
+
+            //Carga de feriados
+            String feriadosLeidos = data.split("\\|")[0];
+            String eventosLeidos = data.split("\\|")[1];
+
+            String[] feriadosLeidosArray = feriadosLeidos.split(",");
+            String[] eventosLeidosArray = eventosLeidos.split(",");
+
+            //Obtengo Feriados Leidos Array
+            for (int i = 0; i < feriadosLeidos.split(",").length; i++) {
+                int accum = 55;
+                mes = 0;
+                dia = 0;
+
+                for (int j = 1; j <= decoMeses.size(); j++) {
+                    accum = accum + decoMeses.get(j);
+                    if (Integer.parseInt(feriadosLeidosArray[i]) < accum) {
+                        mes = j;
+                        dia = (accum - decoMeses.get(j) - Integer.parseInt(feriadosLeidosArray[i])) * -1;
+                        break;
+                    }
+                }
+
+                cargarFeriadosForSdMethod(mes, dia);
+
+            }
+
+            //Carga de Eventos
+            for (int i = 0; i < eventosLeidosArray.length; i++) {
+                int diaEvento = 0;
+                int eventoPosicion = Integer.parseInt(eventosLeidosArray[i].split(":")[0]);
+                for (int j = 0; j < decoDias.size(); j++) {
+                    if (decoDias.get(j) > eventoPosicion) {
+                        diaEvento = j;
+                        break;
+                    }
+
+                }
+                int fechaHora = Integer.parseInt(eventosLeidosArray[i].split(":")[1]);
+                decoEventosHora.get(fechaHora);
+                
+                
+                
+                
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Error al guardar el archivo en la tarjeta SD.");
+        }
+
+    }
+
+    private static void cargarFeriadosForSdMethod(int mes, int dia) {
+        //Busco el mes en el array
+        Mes mesBuscado = meses.stream()
+                .filter(m -> m.indice == mes)
+                .collect(Collectors.toList()).get(0);
+
+        //Cargo el feriado al array de dias en el mes
+        mesBuscado.feriados.add(dia);
+
+        //Obtengo el indice del mes del array
+        OptionalInt indexMeses = IntStream.range(0, meses.size())
+                .filter(i -> mes == meses.get(i).indice)
+                .findFirst();
+
+        meses.set(indexMeses.getAsInt(), mesBuscado);
+    }
+
     private static void guardarCalendarioEnSD(Scanner scanner) {
         clearScreen();
 
@@ -469,23 +684,22 @@ public class ProyectoPotencia {
                     }
                 }
             }
-            
-            fileToSd = fileToSd.substring(0, fileToSd.length() - 1);
+
             fileToSd += "|";
             //Dias
             for (Dia dia : dias) {
                 if (!dia.eventos.isEmpty()) {
                     int posicionInicial = decoDias.get(dia.indice);
                     for (int i = 0; i < dia.eventos.size(); i++) {
-                        fileToSd += formatNumber(posicionInicial) +":"+dia.eventos.get(i).valorCalculadoInicio +",";
+                        fileToSd += formatNumber(posicionInicial) + ":" + dia.eventos.get(i).valorCalculadoInicio + ",";
                         posicionInicial = posicionInicial + 1;
-                        fileToSd += formatNumber(posicionInicial) +":"+dia.eventos.get(i).valorCalculadoFinal +",";
+                        fileToSd += formatNumber(posicionInicial) + ":" + dia.eventos.get(i).valorCalculadoFinal + ",";
                         posicionInicial = posicionInicial + 1;
                     }
                 }
             }
-            
-            fileToSd = fileToSd.substring(0, fileToSd.length() - 1);
+
+            fileToSd += ".";
 
             // Escribir el contenido en el archivo
             FileWriter escritor = new FileWriter(archivo);
@@ -504,12 +718,12 @@ public class ProyectoPotencia {
         System.out.print("\033[H\033[2J");
         System.out.flush();
     }
-    
+
     private static String formatNumber(int valor) {
-        if(valor < 10) {
-            return "0"+valor;
+        if (valor < 10) {
+            return "0" + valor;
         } else {
-            return ""+valor;
+            return "" + valor;
         }
     }
 

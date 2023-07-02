@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package proyecto.potencia;
 
 import java.util.ArrayList;
@@ -14,16 +9,23 @@ import java.util.stream.IntStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 
 /**
  *
- * @author feder
+ * @author ELECTRONICA DE POTENCIA - SOFTWARE PARA CARGA DE FERIADOS Y RANGOS EN
+ * SD
+ *
+ * Clase ProyectoPotencia con metodo Main
+ *
  */
 public class ProyectoPotencia {
 
+    //Listado de Meses
     private static List<Mes> meses = new ArrayList<>();
 
+    //Se inicializan los meses con un id
     private static Mes enero = new Mes(1, "Enero");
     private static Mes febrero = new Mes(2, "Febrero");
     private static Mes marzo = new Mes(3, "Marzo");
@@ -37,8 +39,10 @@ public class ProyectoPotencia {
     private static Mes noviembre = new Mes(11, "Noviembre");
     private static Mes diciembre = new Mes(12, "Diciembre");
 
+    //Listado de dias de la semana
     private static List<Dia> dias = new ArrayList<>();
 
+    //Se inicializan los dias de la semana con un id
     private static Dia lunes = new Dia(1, "Lunes");
     private static Dia martes = new Dia(2, "Martes");
     private static Dia miercoles = new Dia(3, "Miercoles");
@@ -49,7 +53,6 @@ public class ProyectoPotencia {
 
     private static HashMap<Integer, Integer> decoMeses = new HashMap<>();
     private static HashMap<Integer, Integer> decoDias = new HashMap<>();
-    private static HashMap<Integer, String> decoEventosHora = new HashMap<>();
 
     public static void main(String[] args) {
 
@@ -99,6 +102,7 @@ public class ProyectoPotencia {
         System.out.println("MENU: ");
         System.out.println("");
 
+        //INICIALIZACIONES 
         meses.add(enero);
         meses.add(febrero);
         meses.add(marzo);
@@ -141,119 +145,23 @@ public class ProyectoPotencia {
         decoDias.put(5, 40);
         decoDias.put(6, 48);
 
-        decoEventosHora.put(0, "00:00");
-        decoEventosHora.put(1, "00:15");
-        decoEventosHora.put(2, "00:30");
-        decoEventosHora.put(3, "00:45");
-        decoEventosHora.put(4, "01:00");
-        decoEventosHora.put(5, "01:15");
-        decoEventosHora.put(6, "01:30");
-        decoEventosHora.put(7, "01:45");
-        decoEventosHora.put(8, "02:00");
-        decoEventosHora.put(9, "02:15");
-        decoEventosHora.put(10, "02:30");
-        decoEventosHora.put(11, "02:45");
-        decoEventosHora.put(12, "03:00");
-        decoEventosHora.put(13, "03:15");
-        decoEventosHora.put(14, "03:30");
-        decoEventosHora.put(15, "03:45");
-        decoEventosHora.put(16, "04:00");
-        decoEventosHora.put(17, "04:15");
-        decoEventosHora.put(18, "04:30");
-        decoEventosHora.put(19, "04:45");
-        decoEventosHora.put(20, "05:00");
-        decoEventosHora.put(21, "05:15");
-        decoEventosHora.put(22, "05:30");
-        decoEventosHora.put(23, "05:45");
-        decoEventosHora.put(24, "06:00");
-        decoEventosHora.put(25, "06:15");
-        decoEventosHora.put(26, "06:30");
-        decoEventosHora.put(27, "06:45");
-        decoEventosHora.put(28, "07:00");
-        decoEventosHora.put(29, "07:15");
-        decoEventosHora.put(30, "07:30");
-        decoEventosHora.put(31, "07:45");
-        decoEventosHora.put(32, "08:00");
-        decoEventosHora.put(33, "08:15");
-        decoEventosHora.put(34, "08:30");
-        decoEventosHora.put(35, "08:45");
-        decoEventosHora.put(36, "09:00");
-        decoEventosHora.put(37, "09:15");
-        decoEventosHora.put(38, "09:30");
-        decoEventosHora.put(39, "09:45");
-        decoEventosHora.put(40, "10:00");
-        decoEventosHora.put(41, "10:15");
-        decoEventosHora.put(42, "10:30");
-        decoEventosHora.put(43, "10:45");
-        decoEventosHora.put(44, "11:00");
-        decoEventosHora.put(45, "11:15");
-        decoEventosHora.put(46, "11:30");
-        decoEventosHora.put(47, "11:45");
-        decoEventosHora.put(48, "12:00");
-        decoEventosHora.put(49, "12:15");
-        decoEventosHora.put(50, "12:30");
-        decoEventosHora.put(51, "12:45");
-        decoEventosHora.put(52, "13:00");
-        decoEventosHora.put(53, "13:15");
-        decoEventosHora.put(54, "13:30");
-        decoEventosHora.put(55, "13:45");
-        decoEventosHora.put(56, "14:00");
-        decoEventosHora.put(57, "14:15");
-        decoEventosHora.put(58, "14:30");
-        decoEventosHora.put(59, "14:45");
-        decoEventosHora.put(60, "15:00");
-        decoEventosHora.put(61, "15:15");
-        decoEventosHora.put(62, "15:30");
-        decoEventosHora.put(63, "15:45");
-        decoEventosHora.put(64, "16:00");
-        decoEventosHora.put(65, "16:15");
-        decoEventosHora.put(66, "16:30");
-        decoEventosHora.put(67, "16:45");
-        decoEventosHora.put(68, "17:00");
-        decoEventosHora.put(69, "17:15");
-        decoEventosHora.put(70, "17:30");
-        decoEventosHora.put(71, "17:45");
-        decoEventosHora.put(72, "18:00");
-        decoEventosHora.put(73, "18:15");
-        decoEventosHora.put(74, "18:30");
-        decoEventosHora.put(75, "18:45");
-        decoEventosHora.put(76, "19:00");
-        decoEventosHora.put(77, "19:15");
-        decoEventosHora.put(78, "19:30");
-        decoEventosHora.put(79, "19:45");
-        decoEventosHora.put(80, "20:00");
-        decoEventosHora.put(81, "20:15");
-        decoEventosHora.put(82, "20:30");
-        decoEventosHora.put(83, "20:45");
-        decoEventosHora.put(84, "21:00");
-        decoEventosHora.put(85, "21:15");
-        decoEventosHora.put(86, "21:30");
-        decoEventosHora.put(87, "21:45");
-        decoEventosHora.put(88, "22:00");
-        decoEventosHora.put(89, "22:15");
-        decoEventosHora.put(90, "22:30");
-        decoEventosHora.put(91, "22:45");
-        decoEventosHora.put(92, "23:00");
-        decoEventosHora.put(93, "23:15");
-        decoEventosHora.put(94, "23:30");
-        decoEventosHora.put(95, "23:45");
-
-        //System.out.println(gson.toJson(meses));
+        //Se cargan en una lista los items del menu
         List<String> lista = new ArrayList<>();
         lista.add("Cargar Feriados");
         lista.add("Ver Feriados Cargados");
         lista.add("Eliminar todos los feriados");
         lista.add("Eliminar un Feriado");
-        lista.add("Cargar Eventos");
-        lista.add("Ver Eventos Cargados");
-        lista.add("Eliminar todos los eventos");
-        lista.add("Eliminar un evento");
+        lista.add("Cargar Rangos");
+        lista.add("Ver Rangos Cargados");
+        lista.add("Eliminar todos los rangos");
+        lista.add("Eliminar un Rango");
         lista.add("Guardar Feriados en SD y Dias");
         lista.add("Leer SD");
         lista.add("Salir");
 
         Scanner scanner = new Scanner(System.in);
 
+        //Se despliega el menu en consola
         while (true) {
             System.out.println("Selecciona un elemento de la lista (ingresa el índice):");
 
@@ -306,6 +214,7 @@ public class ProyectoPotencia {
         }
     }
 
+    //Este Metodo permite cargar feriados en el formato especificado
     private static void cargarFeriados(Scanner scanner) {
         while (true) {
             clearScreen();
@@ -338,6 +247,7 @@ public class ProyectoPotencia {
         }
     }
 
+    //Permite visualizar el listado de feriados
     private static void verFeriadosCargados() {
         clearScreen();
         List<String> listadoFeriados = new ArrayList<>();
@@ -355,6 +265,7 @@ public class ProyectoPotencia {
 
     }
 
+    //Permite vizualisar los rangos cargados en formato de lista
     private static void verEentosCargados() {
         clearScreen();
         dias.stream().filter((dia) -> (!dia.eventos.isEmpty())).forEachOrdered((dia) -> {
@@ -370,6 +281,7 @@ public class ProyectoPotencia {
 
     }
 
+    //Elimina todos los feriados de la variable meses
     private static void eliminarTodoLosFeriados() {
         System.out.print("\033[H\033[2J");
         System.out.flush();
@@ -382,18 +294,20 @@ public class ProyectoPotencia {
         System.out.println("");
     }
 
+    //Elimina todos los Rangos de la variable dias
     private static void eliminarTodoLosEventos() {
         System.out.print("\033[H\033[2J");
         System.out.flush();
         for (int i = 0; i < dias.size(); i++) {
             dias.get(i).eventos.clear();
         }
-        System.out.println("Se eliminaron todos los eventos.");
+        System.out.println("Se eliminaron todos los rangos.");
 
         System.out.println("");
         System.out.println("");
     }
 
+    //Permite eliminar un feriado en especifico de la variable meses
     private static void eliminarUnFeriado(Scanner scanner) {
         clearScreen();
         System.out.println("Escriba el feriado a eliminar en formato dd/mm: ");
@@ -419,9 +333,10 @@ public class ProyectoPotencia {
 
     }
 
+    //Metodo eliminar un rango en especifico de la variable dias
     private static void eliminarUnEvento(Scanner scanner) {
         clearScreen();
-        System.out.println("Seleccione el dia del evento que desea eliminar: ");
+        System.out.println("Seleccione el dia del rango que desea eliminar: ");
 
         System.out.println("0: Lunes");
         System.out.println("1: Martes");
@@ -446,12 +361,13 @@ public class ProyectoPotencia {
 
         dias.get(indexDia.getAsInt()).eventos.remove(indexDia.getAsInt());
 
-        System.out.println("Se eliminó el Evento del dia " + diabuscado.name);
+        System.out.println("Se eliminó el Rango del dia " + diabuscado.name);
         System.out.println("");
         System.out.println("");
 
     }
 
+    //Metodo que permite cargar rangos y los almacena en la variable dias
     private static void cargarEventos(Scanner scanner) {
         while (true) {
             clearScreen();
@@ -475,24 +391,24 @@ public class ProyectoPotencia {
 
             int eventoInt = -1;
             if (diabuscado.eventos.size() == 4) {
-                System.out.println("Los Eventos de este día estan completos, por favor seleccione un evento a sobrescribir:");
+                System.out.println("Los Eventos de este día estan completos, por favor seleccione un rango a sobrescribir:");
 
-                System.out.println("0: Evento 1");
-                System.out.println("1: Evento 2");
-                System.out.println("2: Evento 3");
-                System.out.println("3: Evento 4");
+                System.out.println("0: Rango 1");
+                System.out.println("1: Rango 2");
+                System.out.println("2: Rango 3");
+                System.out.println("3: Rango 4");
 
                 String eventoSeleccionado = scanner.next();
                 eventoInt = Integer.parseInt(eventoSeleccionado);
 
             }
 
-            System.out.println("Seleccione el horario inicial del evento en formato hh:mm");
+            System.out.println("Seleccione el horario inicial del rango en formato hh:mm");
             System.out.println("(Los minutos deben ser múltiplo de 15)");
 
             String horarioInicial = scanner.next();
 
-            System.out.println("Seleccione el horario final del evento en formato hh:mm");
+            System.out.println("Seleccione el horario final del rango en formato hh:mm");
             System.out.println("(Los minutos deben ser múltiplo de 15)");
 
             String horarioFinal = scanner.next();
@@ -515,10 +431,9 @@ public class ProyectoPotencia {
 
             dias.set(indexDias.getAsInt(), diabuscado);
 
-            System.out.println("Se agregó el evento al día " + diabuscado.name + " [Hora Inicial: " + horarioInicial + " | Hora Final: " + horarioFinal + "]");
-            System.out.println("Hora Inicial Calculada: " + evento.valorCalculadoInicio);
-            System.out.println("Hora Final Calculada: " + evento.valorCalculadoFinal);
-            System.out.println("¿Desea agregar otro evento? (s/n)");
+            System.out.println("Se agregó el rango al día " + diabuscado.name + " [Hora Inicial: " + horarioInicial + " | Hora Final: " + horarioFinal + "]");
+
+            System.out.println("¿Desea agregar otro rango? (s/n)");
             String agregarOtroferiado = scanner.next();
             if (!agregarOtroferiado.equalsIgnoreCase("s")) {
                 break;
@@ -526,6 +441,8 @@ public class ProyectoPotencia {
         }
     }
 
+    //Hace una lectura de los feriados y los rangos cargados en la SD y los mergea con los preexistentes 
+    //durante la ejecución del programa
     private static void leersd(Scanner scanner) {
         clearScreen();
 
@@ -575,7 +492,7 @@ public class ProyectoPotencia {
             String eventosLeidos = data.split("\\|")[1];
 
             String[] feriadosLeidosArray = feriadosLeidos.split(",");
-            String[] eventosLeidosArray = eventosLeidos.split(",");
+            String[] eventosLeidosArray = eventosLeidos.split("[.]")[0].substring(0, eventosLeidos.length() - 1).split(",");
 
             //Obtengo Feriados Leidos Array
             for (int i = 0; i < feriadosLeidos.split(",").length; i++) {
@@ -597,48 +514,92 @@ public class ProyectoPotencia {
             }
 
             //Carga de Eventos
-            for (int i = 0; i < eventosLeidosArray.length; i++) {
+            ArrayList<ArrayList<Integer>> eventosHorarios = new ArrayList<>();
+
+            for (String posicionHorario : eventosLeidosArray) {
+                ArrayList<Integer> e = new ArrayList();
+                e.add(Integer.parseInt(posicionHorario.split(":")[0]));
+                e.add(Integer.parseInt(posicionHorario.split(":")[1]));
+                eventosHorarios.add(e);
+            }
+
+            Collections.sort(eventosHorarios, (ArrayList<Integer> o1, ArrayList<Integer> o2) -> o1.get(0).compareTo(o2.get(0)));
+
+            //Eventos ordenados
+            for (int i = 0; i < eventosHorarios.size(); i = i + 2) {
+                ArrayList<Integer> ev = new ArrayList<>();
+                ArrayList<Integer> evSiguiente = new ArrayList<>();
+                ev = eventosHorarios.get(i);
+                evSiguiente = eventosHorarios.get(i + 1);
+
+                //determina dia
                 int diaEvento = 0;
-                int eventoPosicion = Integer.parseInt(eventosLeidosArray[i].split(":")[0]);
                 for (int j = 0; j < decoDias.size(); j++) {
-                    if (decoDias.get(j) > eventoPosicion) {
+                    if (decoDias.get(j) > ev.get(0)) {
                         diaEvento = j;
                         break;
                     }
-
                 }
-                int fechaHora = Integer.parseInt(eventosLeidosArray[i].split(":")[1]);
-                decoEventosHora.get(fechaHora);
-                
-                
-                
-                
+
+                for (int z = 0; z < decoDias.size(); z++) {
+                    if (decoDias.get(z) > ev.get(0)) {
+                        diaEvento = z - 1;
+                        break;
+                    }
+                }
+
+                Dia diabuscado = diaBuscado(diaEvento);
+                int eventoAOcupar = diabuscado.eventos.size();
+
+                if (eventoAOcupar <= 4) {
+                    //Determina Horario Inicial y Final
+
+                    String horarioInicial = formatNumber(ev.get(1) / 4) + ":" + formatNumber((ev.get(1) % 4) * 15);
+                    String horarioFinal = formatNumber(evSiguiente.get(1) / 4) + ":" + formatNumber((evSiguiente.get(1) % 4) * 15);
+
+                    Evento evento = new Evento(horarioInicial, horarioFinal);
+
+                    diabuscado.eventos.add(evento);
+
+                    //Obtengo el indice del mes del array
+                    OptionalInt indexDias = indexDias(diaEvento);
+
+                    dias.set(indexDias.getAsInt(), diabuscado);
+
+                    System.out.println("Feriados y Rangos Leidos correctamente de SD");
+
+                } else {
+                    System.out.println("Todos los rangos estan ocupados para el dia " + diabuscado.name);
+                }
+
             }
 
         } catch (IOException e) {
             e.printStackTrace();
-            System.out.println("Error al guardar el archivo en la tarjeta SD.");
+            System.out.println("Error al leer el archivo en la tarjeta SD.");
         }
 
+        System.out.println("Feriados y Rangos Leidos correctamente de SD");
+
     }
 
-    private static void cargarFeriadosForSdMethod(int mes, int dia) {
-        //Busco el mes en el array
-        Mes mesBuscado = meses.stream()
-                .filter(m -> m.indice == mes)
-                .collect(Collectors.toList()).get(0);
+    /*
+    
+        Este Metodo guarda los feriados y los rangos en la SD:
+    
+        Codifica los feriados a la posición de memoria correspondiente a la EEPROM del
+        Atmega328, luego el firmware del dispositivo se encarga de setear un 1 en
+        dichas posiciones de memoria indicando que corresponde un feriado para esas fechas.
+    
+        Para los Rangos se utiliza el formato XX:YY, siendo XX la posición de memoria
+        de dentro de la EEPROM e YY el horario a alamacenenar en dicha posicion de memoria.
+    
+        Los feriados y los rangos estan separados por un PIPE (|) para facilitar el parseo
+        y se detecta el fin de trama con un punto.
+    
+    */
 
-        //Cargo el feriado al array de dias en el mes
-        mesBuscado.feriados.add(dia);
-
-        //Obtengo el indice del mes del array
-        OptionalInt indexMeses = IntStream.range(0, meses.size())
-                .filter(i -> mes == meses.get(i).indice)
-                .findFirst();
-
-        meses.set(indexMeses.getAsInt(), mesBuscado);
-    }
-
+   
     private static void guardarCalendarioEnSD(Scanner scanner) {
         clearScreen();
 
@@ -691,9 +652,9 @@ public class ProyectoPotencia {
                 if (!dia.eventos.isEmpty()) {
                     int posicionInicial = decoDias.get(dia.indice);
                     for (int i = 0; i < dia.eventos.size(); i++) {
-                        fileToSd += formatNumber(posicionInicial) + ":" + dia.eventos.get(i).valorCalculadoInicio + ",";
+                        fileToSd += formatNumber(posicionInicial) + ":" + formatNumber(dia.eventos.get(i).valorCalculadoInicio) + ",";
                         posicionInicial = posicionInicial + 1;
-                        fileToSd += formatNumber(posicionInicial) + ":" + dia.eventos.get(i).valorCalculadoFinal + ",";
+                        fileToSd += formatNumber(posicionInicial) + ":" + formatNumber(dia.eventos.get(i).valorCalculadoFinal) + ",";
                         posicionInicial = posicionInicial + 1;
                     }
                 }
@@ -714,11 +675,45 @@ public class ProyectoPotencia {
 
     }
 
+    //Metodo para obtener el Objeto Dia por un indice
+    private static Dia diaBuscado(int diaEvento) {
+        return dias.stream()
+                .filter(d -> d.indice == diaEvento)
+                .collect(Collectors.toList()).get(0);
+    }
+
+    //Metodo para obtener indice en la variable dias
+    private static OptionalInt indexDias(int diaEvento) {
+        return IntStream.range(0, dias.size())
+                .filter(d -> diaEvento == dias.get(d).indice)
+                .findFirst();
+    }
+
+    //Metodo para cargar feriados dentro de la variable meses
+    private static void cargarFeriadosForSdMethod(int mes, int dia) {
+        //Busco el mes en el array
+        Mes mesBuscado = meses.stream()
+                .filter(m -> m.indice == mes)
+                .collect(Collectors.toList()).get(0);
+
+        //Cargo el feriado al array de dias en el mes
+        mesBuscado.feriados.add(dia);
+
+        //Obtengo el indice del mes del array
+        OptionalInt indexMeses = IntStream.range(0, meses.size())
+                .filter(i -> mes == meses.get(i).indice)
+                .findFirst();
+
+        meses.set(indexMeses.getAsInt(), mesBuscado);
+    }
+
+    //Metodo para borrar pantalla
     private static void clearScreen() {
         System.out.print("\033[H\033[2J");
         System.out.flush();
     }
 
+    //Formatea numero en string para siempre manejar 2 decimales
     private static String formatNumber(int valor) {
         if (valor < 10) {
             return "0" + valor;

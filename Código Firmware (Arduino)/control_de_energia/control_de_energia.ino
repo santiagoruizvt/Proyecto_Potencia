@@ -2194,16 +2194,17 @@ void loop(){
     if((min_aux != min_ant)||(modificacion_realizada))
     {
       //Aca entra cada un minuto o cuando se haga una modificación en el Reloj o en los Rangos    
-      modificacion_realizada=0;
 
       Leer_Fecha_Hora_RTC(ActualTime);
 
       //Si cambia el día, leo los rangos permitidos
-      if(ultimo_dia != ActualTime.DoW)
+      if((ultimo_dia != ActualTime.DoW)||(modificacion_realizada))
       {
         Cargar_Rangos();
         ultimo_dia=ActualTime.DoW;
       }  
+	    
+      modificacion_realizada=0;
 
       codigo_hora_actual = (ActualTime.hora*4)+(ActualTime.min/15);
 
